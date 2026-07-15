@@ -49,10 +49,10 @@ jobs:
             cd /root/site
             
             # 2. Скачиваем новые образы бэкенда и фронтенда
-            docker compose pull
+            docker-compose pull
             
             # 3. Перезапускаем контейнеры без остановки сайта
-            docker compose up -d --remove-orphans
+            docker-compose up -d --remove-orphans
             
             # 4. Удаляем старые ненужные слои, чтобы сервер не засорялся
             docker image prune -f
