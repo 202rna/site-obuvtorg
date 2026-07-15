@@ -23,3 +23,14 @@ CREATE TABLE IF NOT EXISTS cart_items (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT unique_user_product UNIQUE (user_id, product_id)
 );
+
+-- ТЕСТОВАЯ УЧЕТНАЯ ЗАПИСЬ АДМИНА. ОБЯЗАТЕЛЬНО УДАЛИТЬ ПРИ РЕАЛЬНОМ ИСПОЛЬЗОВАНИИ !!!
+-- Логин: admin
+-- Пароль: admin
+INSERT INTO users (email, hashed_password, role) 
+VALUES (
+    'admin', 
+    '$2a$12$ISyT.C5HBqz6OYESqP9RV.y996NdHV8ETL7rDgP.KROmDj8BGDice', 
+    'admin'
+)
+ON CONFLICT (email) DO NOTHING;
