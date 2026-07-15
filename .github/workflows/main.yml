@@ -1,0 +1,58 @@
+name: CI/CD Build and Deploy
+
+on:
+  push:
+    branches: [ "main" ] # Скрипт сработает, когда вы отправите код в ветку main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # 1. Собираем и отправляем BACKEND
+      - name: Build and push Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend # GitHub зайдет в папку backend
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/my-backend:latest
+
+      # 2. Собираем и отправляем FRONTEND
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend # GitHub зайдет в папку frontend
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/my-frontend:latest
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-push # Начнется только после успешной сборки образов
+
+    steps:
+      - name: Executing remote ssh commands to deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            # 1. Перейдите в папку с проектом на вашем VPS (замените путь на свой)
+            cd /root/site
+            
+            # 2. Скачиваем новые образы бэкенда и фронтенда
+            docker-compose pull
+            
+            # 3. Перезапускаем контейнеры без остановки сайта
+            docker-compose up -d --remove-orphans
+            
+            # 4. Удаляем старые ненужные слои, чтобы сервер не засорялся
+            docker image prune -f
