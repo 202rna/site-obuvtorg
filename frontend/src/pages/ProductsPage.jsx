@@ -73,26 +73,23 @@ export default function ProductsPage({
   }, [API_URL]);
 
   const styles = {
-    
     container: {
-      
       width: "100%",
       maxWidth: "100%",
       minHeight: "100vh",
-      padding: "0 24px", 
+      padding: "0 24px",
       boxSizing: "border-box",
       fontFamily: "system-ui, -apple-system, sans-serif",
     },
-
     grid: {
       display: "grid",
-      
+      // Базовая настройка для десктопа (минимум 280px на карточку)
       gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
       gap: "32px",
       marginBottom: "40px",
     },
     card: {
-      backgroundColor: "rgba(255, 255, 255, 0.75)", 
+      backgroundColor: "rgba(255, 255, 255, 0.75)",
       backdropFilter: "blur(8px)",
       borderRadius: "20px",
       overflow: "hidden",
@@ -177,73 +174,132 @@ export default function ProductsPage({
 
   return (
     <div style={styles.container}>
-      <div style={styles.grid}>
-        {products.map((p) => {
-          const isInCart = cart.some(
-            (item) => String(item.id) === String(p.id),
-          );
+      {/* Добавляем стили для мобильных устройств */}
+      <style>{`
+        @media (max-width: 600px) {
+          .products-container {
+            padding: 0 12px !important;
+          }
+          .products-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 12px !important;
+            margin-bottom: 24px !important;
+          }
+          .product-card {
+            border-radius: 14px !important;
+          }
+          .product-img-container {
+            height: 140px !important;
+            padding: 10px !important;
+          }
+          .product-content {
+            padding: 12px !important;
+          }
+          .product-title {
+            font-size: 14px !important;
+            margin-bottom: 4px !important;
+          }
+          .product-desc {
+            font-size: 12px !important;
+            margin-bottom: 12px !important;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+          }
+          .product-price {
+            font-size: 16px !important;
+            margin-bottom: 12px !important;
+          }
+          .product-buy-btn, .product-delete-btn {
+            padding: 10px 6px !important;
+            font-size: 12px !important;
+            border-radius: 8px !important;
+          }
+        }
+      `}</style>
 
-          return (
-            <div key={p.id} style={styles.card}>
-              <div style={styles.imgContainer}>
-                <img src={p.image_url} alt={p.title} style={styles.img} />
-              </div>
-              <div style={styles.content}>
-                <h4 style={styles.title}>{p.title}</h4>
-                <p style={styles.desc}>{p.description}</p>
-                <div style={styles.price}>
-                  {p.price.toLocaleString("ru-RU")} ₽
+      {/* Применяем классы для медиазапросов */}
+      <div className="products-container" style={styles.container}>
+        <div className="products-grid" style={styles.grid}>
+          {products.map((p) => {
+            const isInCart = cart.some(
+              (item) => String(item.id) === String(p.id),
+            );
+
+            return (
+              <div key={p.id} className="product-card" style={styles.card}>
+                <div
+                  className="product-img-container"
+                  style={styles.imgContainer}
+                >
+                  <img src={p.image_url} alt={p.title} style={styles.img} />
                 </div>
+                <div className="product-content" style={styles.content}>
+                  <h4 className="product-title" style={styles.title}>
+                    {p.title}
+                  </h4>
+                  <p className="product-desc" style={styles.desc}>
+                    {p.description}
+                  </p>
+                  <div className="product-price" style={styles.price}>
+                    {p.price.toLocaleString("ru-RU")} ₽
+                  </div>
 
-                {token && (
-                  <button
-                    style={{
-                      ...styles.buyBtn,
-                      backgroundColor: isInCart ? "#64748b" : "#10b981",
-                      cursor: isInCart ? "default" : "pointer",
-                      boxShadow: isInCart
-                        ? "none"
-                        : "0 4px 12px rgba(16, 185, 129, 0.15)",
-                    }}
-                    onClick={() => !isInCart && addToCart(p)}
-                    disabled={isInCart}
-                  >
-                    {isInCart
-                      ? "✓ Добавлено в корзину"
-                      : "🛒 Добавить в корзину"}
-                  </button>
-                )}
+                  {token && (
+                    <button
+                      className="product-buy-btn"
+                      style={{
+                        ...styles.buyBtn,
+                        backgroundColor: isInCart ? "#64748b" : "#10b981",
+                        cursor: isInCart ? "default" : "pointer",
+                        boxShadow: isInCart
+                          ? "none"
+                          : "0 4px 12px rgba(16, 185, 129, 0.15)",
+                      }}
+                      onClick={() => !isInCart && addToCart(p)}
+                      disabled={isInCart}
+                    >
+                      {isInCart ? "✓ В корзине" : "🛒 В корзину"}
+                    </button>
+                  )}
 
-                {token && userRole === "admin" && (
-                  <button
-                    style={styles.deleteBtn}
-                    onClick={() => handleDeleteProduct(p.id)}
-                  >
-                    🗑️ Удалить товар
-                  </button>
-                )}
+                  {token && userRole === "admin" && (
+                    <button
+                      className="product-delete-btn"
+                      style={styles.deleteBtn}
+                      onClick={() => handleDeleteProduct(p.id)}
+                    >
+                      🗑️ Удалить
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
 
-      <div style={{ textAlign: "center", paddingBottom: "80px" }}>
-        {hasMore ? (
-          <button
-            style={styles.btnMore}
-            onClick={loadMoreProducts}
-            disabled={loading}
-          >
-            {loading ? "Загрузка..." : "Показать еще товары"}
-          </button>
-        ) : (
-          <p
-            style={{ color: "#64748b", fontStyle: "italic", marginTop: "40px" }}
-          >
-            Вы посмотрели все доступные товары 🎉
-          </p>
-        )}
+        <div style={{ textAlign: "center", paddingBottom: "80px" }}>
+          {hasMore ? (
+            <button
+              style={styles.btnMore}
+              onClick={loadMoreProducts}
+              disabled={loading}
+            >
+              {loading ? "Загрузка..." : "Показать еще товары"}
+            </button>
+          ) : (
+            <p
+              style={{
+                color: "#64748b",
+                fontStyle: "italic",
+                marginTop: "40px",
+              }}
+            >
+              Вы посмотрели все доступные товары 🎉
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
