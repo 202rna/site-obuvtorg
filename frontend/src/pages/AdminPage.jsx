@@ -51,7 +51,7 @@ export default function AdminPage({ API_URL, token }) {
         setMsg({ text: data.detail || "Ошибка добавления", isError: true });
       }
     } catch {
-      setMsg({ text: "Не удалось связаться с бэкендом", isError: true });
+      setMsg({ text: "Ошибка", isError: true });
     }
   }
 

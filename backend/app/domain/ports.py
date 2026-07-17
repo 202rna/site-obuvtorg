@@ -84,7 +84,7 @@ class CartRepositoryPort(ABC):
         pass
 
 
-class NoteRepositoryPost(ABC):
+class NoteRepositoryPort(ABC):
     @abstractmethod
     async def add(self, title: str, description: str, image_url: str | None = None) -> bool:
         """Добавление заметки"""
@@ -96,6 +96,6 @@ class NoteRepositoryPost(ABC):
         pass
     
     @abstractmethod
-    async def update(self, note_id: int, title: str | None = None, description: str | None = None, image_url: str | None = None) -> str:
+    async def update(self, note_id: int, title: str | None = None, description: str | None = None, image_url: str | None = None) -> str | None | bool:
         """Изменение названия/содержимого/фотографии заметки"""
         pass

@@ -1,6 +1,6 @@
 from typing import Any, List
 from psycopg_pool import AsyncConnectionPool
-from app.domain.ports import UserRepositoryPort, ProductRepositoryPort, CartRepositoryPort, NoteRepositoryPost
+from app.domain.ports import UserRepositoryPort, ProductRepositoryPort, CartRepositoryPort, NoteRepositoryPort
 from app.domain.entities import User
 
 
@@ -161,6 +161,7 @@ class PostgresProductRepository(ProductRepositoryPort):
                 return None
 
 
+
 class PostgresCartRepository(CartRepositoryPort):
     """Реализует добавление товара в корзину пользователя.
 
@@ -216,7 +217,15 @@ class PostgresCartRepository(CartRepositoryPort):
                 await cur.execute("DELETE FROM cart_items WHERE user_id = %s", (user_id,))
 
 
-class PostgresNoteRepository(NoteRepositoryPost):
+class MissingType:
+    """Класс заглушка отличать или полу стерли, или не передали вовсе.
+    """
+    pass
+
+
+Missing = MissingType()
+
+class PostgresNoteRepository(NoteRepositoryPort):
     def __init__(self, pool: AsyncConnectionPool[Any]) -> None:
         self.pool = pool
     
@@ -228,12 +237,10 @@ class PostgresNoteRepository(NoteRepositoryPost):
                         """
                         INSERT INTO notes (title, description, image_url) 
                         VALUES %s, %s, %s"
-                        RETURNING id
                         """,
                         (title, description, image_url)
                     )
-                    row = await cur.fetchone()
-                    return row[0] is not None
+                    return True
         except Exception:
             return False
 
@@ -255,4 +262,48 @@ class PostgresNoteRepository(NoteRepositoryPost):
                         return False
                     return row[0]
         except Exception as e:
+            return False
+    
+    async def update(
+        self, 
+        note_id: int, 
+        title: str | None | MissingType = Missing, 
+        description: str | None | MissingType = Missing, 
+        image_url: str | None | MissingType = Missing
+    ) -> str | None | bool:
+        try:
+            update_fields = list()
+            query_args = list()
+            
+            if title is not Missing:
+                update_fields.append("title = %s")
+                query_args.append(title)
+            
+            if description is not Missing:
+                update_fields.append("description = %s")
+                query_args.append(description)
+            
+            if image_url is not Missing:
+                update_fields.append("image_url = %s")
+                query_args.append(image_url)
+            
+            if not update_fields:
+                return True
+            
+            query_args.append(note_id)
+            fields_for_updating_sql = ",".join(update_fields)
+            sql_query = f""" 
+                UPDATE notes
+                SET {fields_for_updating_sql}
+                WHERE id = %s
+                RETURNING image_url
+            """
+            async with self.pool.connection() as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute(sql_query, query_args)
+                    row = await cur.fetchone()
+                    if row is None:
+                        return False    # Если нет такой строки вообще с этим id
+                    return row[0]   # Или строчку или None если поле в БД равно Null
+        except Exception:
             return False
