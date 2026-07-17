@@ -1,5 +1,6 @@
 from app.domain.ports import CartRepositoryPort
 
+
 class GetCartUseCase:
     """Получение товаров в корзине конкретного пользователя.
     """

@@ -1,7 +1,6 @@
 version: "3.3"
 
 services:
-  # --- 1. КОНТЕЙНЕР БАЗЫ ДАННЫХ POSTGRES ---
   postgres_db:
     image: postgres:16-alpine
     container_name: clean_app_postgres
@@ -40,7 +39,6 @@ services:
     networks:
       - app_network
 
-  # --- 3. КОНТЕЙНЕР ФРОНТЕНДА ---
   frontend:
     build: ./frontend
     container_name: clean_app_frontend

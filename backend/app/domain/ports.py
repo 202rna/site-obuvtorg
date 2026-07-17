@@ -3,7 +3,6 @@ from app.domain.entities import User
 
 class UserRepositoryPort(ABC):
     """Интерфейс для управление сущностью пользователь."""
-    
     @abstractmethod
     async def get_by_email(self, email: str) -> User | None:
         """Получение пользователя по логину."""
@@ -22,7 +21,6 @@ class UserRepositoryPort(ABC):
 
 class PasswordHasherPort(ABC):
     """Интерфейс для хэширования и проверки паролей."""
-    
     @abstractmethod
     def hash(self, password: str) -> str:
         """Создание хэша для пароля."""
@@ -36,7 +34,6 @@ class PasswordHasherPort(ABC):
 
 class TokenProviderPort(ABC):
     """Интерфейс для генерации и проверки токенов доступа"""
-    
     @abstractmethod
     def create_access_token(self, user_id: int, expires_minutes: int = 60) -> str:
         """Создание токена."""
@@ -53,7 +50,6 @@ class TokenProviderPort(ABC):
     
 class ProductRepositoryPort(ABC):
     """Интерфейс для управления сущностями товаров"""
-    
     @abstractmethod
     async def get_all(self, last_id: int | None, limit: int) -> list:
         """Получение товаров по курсору."""
@@ -70,11 +66,8 @@ class ProductRepositoryPort(ABC):
         pass
 
 
-
-
 class CartRepositoryPort(ABC):
     """Интерфейс управления корзиной в базе данных."""
-    
     @abstractmethod
     async def add(self, user_id: int, product_id: int) -> bool:
         """Добавить товар в корзину."""
@@ -88,4 +81,21 @@ class CartRepositoryPort(ABC):
     @abstractmethod
     async def clear(self, user_id: int) -> None:
         """Очистить корзину пользователя."""
+        pass
+
+
+class NoteRepositoryPost(ABC):
+    @abstractmethod
+    async def add(self, title: str, description: str, image_url: str | None = None) -> bool:
+        """Добавление заметки"""
+        pass
+    
+    @abstractmethod
+    async def delete(self, note_id: int) -> str | None | bool:
+        """Удаление заметки по ID."""
+        pass
+    
+    @abstractmethod
+    async def update(self, note_id: int, title: str | None = None, description: str | None = None, image_url: str | None = None) -> str:
+        """Изменение названия/содержимого/фотографии заметки"""
         pass

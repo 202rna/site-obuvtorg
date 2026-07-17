@@ -13,15 +13,15 @@ from app.adapters.repositories import PostgresUserRepository, PostgresProductRep
 from app.adapters.controllers import create_user_router
 
 
-from app.domain.use_cases import RegisterUserUseCase
-from app.domain.login_use_case import LoginUserUseCase
-from app.domain.get_profile_use_case import GetProfileUseCase
-from app.domain.get_products_use_case import GetProductsUseCase
-from app.domain.add_product_use_case import AddProductUseCase
-from app.domain.add_to_cart_use_case import AddToCartUseCase
-from app.domain.get_cart_use_case import GetCartUseCase
-from app.domain.clear_cart_use_case import ClearCartUseCase
-from app.domain.delete_product_use_case import DeleteProductUseCase
+from app.domain.usecases.users.register_use_cases import RegisterUserUseCase
+from app.domain.usecases.users.login_use_case import LoginUserUseCase
+from app.domain.usecases.users.get_profile_use_case import GetProfileUseCase
+from app.domain.usecases.product.get_products_use_case import GetProductsUseCase
+from app.domain.usecases.product.add_product_use_case import AddProductUseCase
+from app.domain.usecases.cart.add_to_cart_use_case import AddToCartUseCase
+from app.domain.usecases.cart.get_cart_use_case import GetCartUseCase
+from app.domain.usecases.cart.clear_cart_use_case import ClearCartUseCase
+from app.domain.usecases.product.delete_product_use_case import DeleteProductUseCase
 
 
 @asynccontextmanager
@@ -48,7 +48,7 @@ async def add_production_secure_headers(request, call_next):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

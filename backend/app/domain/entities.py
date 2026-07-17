@@ -20,3 +20,13 @@ class Order:
     price: float = 0.0
     description: str = ""
     image_url: str = ""
+
+
+@dataclass
+class Note:
+    """Сущность заметки/новости
+    """
+    id: Optional[int] = None
+    title: str = ""
+    description: str = ""
+    image_url: Optional[str] = None

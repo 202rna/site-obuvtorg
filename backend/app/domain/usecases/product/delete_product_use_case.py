@@ -1,5 +1,6 @@
 from app.domain.ports import ProductRepositoryPort
 
+
 class DeleteProductUseCase:
     """Удаление конкретного товара (Только для администратора).
     """

@@ -1,9 +1,9 @@
 import bcrypt
 from app.domain.ports import PasswordHasherPort
 
+
 class BcryptPasswordHasher(PasswordHasherPort):
-    """Реализация порта шифрования."""
-    
+    """Реализация хэширования и верификации хэша."""
     def hash(self, password: str) -> str:
         """Хэширование пароля."""
         

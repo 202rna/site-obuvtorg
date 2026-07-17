@@ -1,17 +1,33 @@
 from typing import Any, List
 from psycopg_pool import AsyncConnectionPool
-from app.domain.ports import UserRepositoryPort, ProductRepositoryPort, CartRepositoryPort
+from app.domain.ports import UserRepositoryPort, ProductRepositoryPort, CartRepositoryPort, NoteRepositoryPost
 from app.domain.entities import User
 
 
 class PostgresUserRepository(UserRepositoryPort):
+    """Репозиторий для управления данными пользователей в PostgreSQL
+    ( сохранение, обновление, удаление и поиск пользователей в базе данных ).
+    """
+    
     def __init__(self, pool: AsyncConnectionPool[Any]):
+        """Иницилизирует репозиторий.
+
+        Args:
+            pool (AsyncConnectionPool[Any]): Пул соединений с БД.
+        """
         self.pool = pool
 
     async def get_by_email(self, email: str) -> User | None:
+        """Получение пользователя из БД по email
+
+        Args:
+            email (str): Пользовательский е-мэил
+
+        Returns:
+            User | None: Пользователь найден возвращает User, иначе - None
+        """
         async with self.pool.connection() as conn:
             async with conn.cursor() as cur:
-                
                 await cur.execute("SELECT id, email, hashed_password, role FROM users WHERE email = %s", (email,))
                 row = await cur.fetchone()
                 if not row: return None
@@ -19,6 +35,14 @@ class PostgresUserRepository(UserRepositoryPort):
                 return User(id=row[0], email=row[1], hashed_password=row[2], role=row[3])
 
     async def get_by_id(self, user_id: int) -> User | None:
+        """Получение пользователя из БД по ID
+
+        Args:
+            user_id (int): Пользовательский идентификатор
+
+        Returns:
+            User | None: Пользователь найдет возвращает User, иначе - None
+        """
         async with self.pool.connection() as conn:
             async with conn.cursor() as cur:
                 
@@ -29,6 +53,17 @@ class PostgresUserRepository(UserRepositoryPort):
                 return User(id=row[0], email=row[1], hashed_password=row[2], role=row[3])
 
     async def save(self, user: User) -> User:
+        """Сохранение пользователя в БД.
+
+        Args:
+            user (User): Объект пользователя
+
+        Raises:
+            RuntimeError: Поле ID пользователя в БД Null.
+
+        Returns:
+            User: Пользователь с присвоеным ID, который вернула БД.
+        """
         async with self.pool.connection() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(
@@ -43,6 +78,11 @@ class PostgresUserRepository(UserRepositoryPort):
 
 
 class PostgresProductRepository(ProductRepositoryPort):
+    """Получение  в БД продуктов из таблицы product.
+
+    Args:
+        ProductRepositoryPort (_type_): _description_
+    """
     def __init__(self, pool: AsyncConnectionPool[Any]):
         self.pool = pool
 
@@ -50,13 +90,11 @@ class PostgresProductRepository(ProductRepositoryPort):
         async with self.pool.connection() as conn:
             async with conn.cursor() as cur:
                 if last_id is None:
-                    
                     await cur.execute(
                         "SELECT id, title, price, description, image_url FROM products ORDER BY id ASC LIMIT %s",
                         (limit,)
                     )
                 else:
-                    
                     await cur.execute(
                         """
                         SELECT id, title, price, description, image_url 
@@ -69,7 +107,7 @@ class PostgresProductRepository(ProductRepositoryPort):
                     )
                 
                 rows = await cur.fetchall()
-                
+
                 products = []
                 for row in rows:
                     products.append({
@@ -82,6 +120,14 @@ class PostgresProductRepository(ProductRepositoryPort):
                 return products
 
     async def save(self, title: str, price: float, description: str, image_url: str) -> dict:
+        """Сохранение в БД товара конкретного.
+
+        Args:
+            title (str): Название.
+            price (float): Цена.
+            description (str): Описание (короткое).
+            image_url (str): Адрес изображения.
+        """
         async with self.pool.connection() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(
@@ -96,13 +142,18 @@ class PostgresProductRepository(ProductRepositoryPort):
                 if not row:
                     raise RuntimeError("Не удалось сохранить товар")
                 return {"id": row[0], "title": row[1], "price": float(row[2]), "description": row[3], "image_url": row[4]}
-
-        
     
     async def delete(self, product_id: int) -> str | None:
+        """Удаление конкретного товара по ID из БД таблицы products.
+
+        Args:
+            product_id (int): Идентификатор удаляемого товара.
+
+        Returns:
+            str | None: Если товар существовал в таблице то его image_url для последующего удаления файла. Иначе - None.
+        """
         async with self.pool.connection() as conn:
             async with conn.cursor() as cur:
-                
                 await cur.execute("DELETE FROM products WHERE id = %s RETURNING image_url", (product_id,))
                 row = await cur.fetchone()
                 if row:
@@ -110,16 +161,19 @@ class PostgresProductRepository(ProductRepositoryPort):
                 return None
 
 
-
 class PostgresCartRepository(CartRepositoryPort):
-    def __init__(self, pool: AsyncConnectionPool[Any]):
+    """Реализует добавление товара в корзину пользователя.
+
+    Args:
+        CartRepositoryPort (interface): Порт репозитория корзины.
+    """
+    def __init__(self, pool: AsyncConnectionPool[Any]) -> None:
         self.pool = pool
 
     async def add(self, user_id: int, product_id: int) -> bool:
         async with self.pool.connection() as conn:
             async with conn.cursor() as cur:
                 try:
-                    
                     await cur.execute(
                         """
                         INSERT INTO cart_items (user_id, product_id) 
@@ -137,7 +191,6 @@ class PostgresCartRepository(CartRepositoryPort):
     async def get_user_cart(self, user_id: int) -> List[dict]:
         async with self.pool.connection() as conn:
             async with conn.cursor() as cur:
-                
                 await cur.execute(
                     """
                     SELECT p.id, p.title, p.price, p.description, p.image_url 
@@ -152,6 +205,54 @@ class PostgresCartRepository(CartRepositoryPort):
                 return [{"id": r[0], "title": r[1], "price": float(r[2]), "description": r[3], "image_url": r[4]} for r in rows]
 
     async def clear(self, user_id: int) -> None:
+        """Очистка полная корзины пользователя по ID.
+
+        Args:
+            user_id (int): Идентификатор пользователя, из чьей корзины все удаляется.
+        """
+        
         async with self.pool.connection() as conn:
             async with conn.cursor() as cur:
                 await cur.execute("DELETE FROM cart_items WHERE user_id = %s", (user_id,))
+
+
+class PostgresNoteRepository(NoteRepositoryPost):
+    def __init__(self, pool: AsyncConnectionPool[Any]) -> None:
+        self.pool = pool
+    
+    async def add(self, title: str, description: str, image_url: str | None = None) -> bool:
+        try:
+            async with self.pool.connection() as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute(
+                        """
+                        INSERT INTO notes (title, description, image_url) 
+                        VALUES %s, %s, %s"
+                        RETURNING id
+                        """,
+                        (title, description, image_url)
+                    )
+                    row = await cur.fetchone()
+                    return row[0] is not None
+        except Exception:
+            return False
+
+    async def delete(self, note_id: int) -> str | None | bool:
+        try:
+            async with self.pool.connection() as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute(
+                        """
+                        DELETE FROM notes
+                        WHERE id = %s
+                        RETURNING image_url
+                        """,
+                        (note_id,)
+                    )
+                    row = await cur.fetchone()
+                    
+                    if row is None:
+                        return False
+                    return row[0]
+        except Exception as e:
+            return False

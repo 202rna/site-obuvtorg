@@ -1,5 +1,6 @@
 from app.domain.ports import CartRepositoryPort
 
+
 class ClearCartUseCase:
     """Удаление всех товаров из корзины."""
     def __init__(self, cart_repo: CartRepositoryPort):

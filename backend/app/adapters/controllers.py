@@ -1,21 +1,24 @@
 from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File, Form
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel, EmailStr
-from app.domain.use_cases import RegisterUserUseCase
-from app.domain.login_use_case import LoginUserUseCase
-from app.domain.get_profile_use_case import GetProfileUseCase
-from app.domain.get_products_use_case import GetProductsUseCase  
-from app.domain.ports import TokenProviderPort
-from app.domain.add_product_use_case import AddProductUseCase
-from app.domain.entities import User
+from pydantic import BaseModel
+
+
 import shutil
 import os
 import uuid
 
-from app.domain.add_to_cart_use_case import AddToCartUseCase
-from app.domain.get_cart_use_case import GetCartUseCase
-from app.domain.clear_cart_use_case import ClearCartUseCase
-from app.domain.delete_product_use_case import DeleteProductUseCase
+
+from app.domain.usecases.users.register_use_cases import RegisterUserUseCase
+from app.domain.usecases.users.login_use_case import LoginUserUseCase
+from app.domain.usecases.users.get_profile_use_case import GetProfileUseCase
+from app.domain.usecases.product.get_products_use_case import GetProductsUseCase  
+from app.domain.usecases.product.add_product_use_case import AddProductUseCase
+from app.domain.usecases.cart.add_to_cart_use_case import AddToCartUseCase
+from app.domain.usecases.cart.get_cart_use_case import GetCartUseCase
+from app.domain.usecases.cart.clear_cart_use_case import ClearCartUseCase
+from app.domain.usecases.product.delete_product_use_case import DeleteProductUseCase
+from app.domain.ports import TokenProviderPort
+from app.domain.entities import User
 
 
 security = HTTPBearer()
@@ -24,19 +27,23 @@ class UserRegisterSchema(BaseModel):
     email: str
     password: str
 
+
 class UserLoginSchema(BaseModel):
     email: str
     password: str
 
+
 class UserSchema(BaseModel):
     email: str
     password: str
+
 
 class ProductCreateSchema(BaseModel):
     title: str
     price: float
     description: str
     image_url: str
+
 
 def create_user_router(
     register_use_case: RegisterUserUseCase,
@@ -50,10 +57,9 @@ def create_user_router(
     clear_cart_use_case: ClearCartUseCase,
     token_provider: TokenProviderPort
 ) -> APIRouter:
-    
+
     router = APIRouter()
 
-    
     async def get_current_user(cred: HTTPAuthorizationCredentials = Depends(security)) -> User:
         """Аутентификация пользователя"""
         user_id = token_provider.decode_access_token(cred.credentials)
@@ -64,8 +70,7 @@ def create_user_router(
 
     @router.post("/register", status_code=status.HTTP_201_CREATED)
     async def register(data: UserSchema):
-        """        Регистрация нового пользователя
-        
+        """        Регистрация нового пользователя.
         Принимает email/nikname и пароль, проверяет уникальность email/nikname
         в базе данных, хэширует пароль и создает новую учетную запись.
     
@@ -319,6 +324,5 @@ def create_user_router(
         except Exception as e:
             print(f"Ошибка удаления: {e}")
             raise HTTPException(status_code=500, detail="Ошибка удаления товара")
-
 
     return router
