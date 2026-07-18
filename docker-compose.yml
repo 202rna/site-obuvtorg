@@ -49,6 +49,8 @@ services:
       - backend
     networks:
       - app_network
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
 
 volumes:
   pg_data:
