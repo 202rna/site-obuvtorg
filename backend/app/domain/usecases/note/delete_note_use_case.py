@@ -6,7 +6,7 @@ class DeleteNoteUseCase:
     def __init__(self, note_repo: NoteRepositoryPort) -> None:
         self.note_repo = note_repo
             
-    async def execute(self, id: int) -> bool:
+    async def execute(self, user_role: str, id: int) -> bool:
         """Удаляет заметку по ID. С удалением самого изображения
         с сервера в случае если image_url был не Null.
 
@@ -16,15 +16,17 @@ class DeleteNoteUseCase:
         Returns:
             bool: _description_
         """
-        res_del_note = await self.note_repo.delete(id)
+        if user_role != "admin":
+            raise PermissionError("Доступно только администратору.")
         
-        if res_del_note is False:
+        result_del_note = await self.note_repo.delete(id)
+        if result_del_note is False:
             return False
-        if res_del_note is None:
+        if result_del_note is None:
             return True
         
-        if isinstance(res_del_note, str):
-            file_path = res_del_note.lstrip("/")
+        if isinstance(result_del_note, str):
+            file_path = result_del_note.lstrip("/")
             if os.path.exists(file_path):
                 os.remove(file_path)
         return True

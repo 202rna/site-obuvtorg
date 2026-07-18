@@ -5,6 +5,7 @@ class CreateNoteUseCase:
     def __init__(self, note_repo: NoteRepositoryPort) -> None:
         self.note_repo =  note_repo
     
-    async def execute(self, title: str, description: str, image_url: str | None) -> bool:
-        exec_add = await self.note_repo.add(title, description, image_url)
-        return exec_add
+    async def execute(self, user_role: str, title: str, description: str, image_url: str | None) -> bool:
+        if user_role != "admin":
+            raise PermissionError("Доступно только администратору.")
+        return await self.note_repo.add(title, description, image_url)
