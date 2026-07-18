@@ -3,15 +3,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-
 from app.infrastructure.database import db_pool
 from app.infrastructure.crypto import BcryptPasswordHasher
 from app.infrastructure.jwt_provider import JwtTokenProvider
 
-
-from app.adapters.repositories import PostgresUserRepository, PostgresProductRepository, PostgresCartRepository
+from app.adapters.repositories import PostgresUserRepository, PostgresProductRepository, PostgresCartRepository, PostgresNoteRepository
 from app.adapters.controllers import create_user_router
-
 
 from app.domain.usecases.users.register_use_cases import RegisterUserUseCase
 from app.domain.usecases.users.login_use_case import LoginUserUseCase
@@ -22,6 +19,9 @@ from app.domain.usecases.cart.add_to_cart_use_case import AddToCartUseCase
 from app.domain.usecases.cart.get_cart_use_case import GetCartUseCase
 from app.domain.usecases.cart.clear_cart_use_case import ClearCartUseCase
 from app.domain.usecases.product.delete_product_use_case import DeleteProductUseCase
+from app.domain.usecases.note.create_note_use_case import CreateNoteUseCase
+from app.domain.usecases.note.delete_note_use_case import DeleteNoteUseCase
+from app.domain.usecases.note.update_note_use_case import UpdateNoteUseCase
 
 
 @asynccontextmanager
@@ -62,8 +62,12 @@ token_provider = JwtTokenProvider()
 user_repository = PostgresUserRepository(db_pool)
 product_repository = PostgresProductRepository(db_pool)
 cart_repository = PostgresCartRepository(db_pool)  
+note_repository = PostgresNoteRepository(db_pool)
 
 
+create_note_use_case = CreateNoteUseCase(note_repo=note_repository)
+update_note_use_case = UpdateNoteUseCase(note_repo=note_repository)
+delete_note_use_case = DeleteNoteUseCase(note_repo=note_repository)
 register_use_case = RegisterUserUseCase(user_repo=user_repository, hasher=hasher)
 login_use_case = LoginUserUseCase(user_repo=user_repository, hasher=hasher, token_provider=token_provider)
 get_profile_use_case = GetProfileUseCase(user_repo=user_repository)
@@ -76,6 +80,9 @@ clear_cart_use_case = ClearCartUseCase(cart_repo=cart_repository)
 
 
 user_router = create_user_router(
+    create_note_use_case=create_note_use_case,
+    update_note_use_case=update_note_use_case,
+    delete_note_use_case=delete_note_use_case,
     register_use_case=register_use_case,
     login_use_case=login_use_case,
     get_profile_use_case=get_profile_use_case,

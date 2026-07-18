@@ -7,16 +7,22 @@ import shutil
 import os
 import uuid
 
+from app.domain.usecases.note.create_note_use_case import CreateNoteUseCase
+from app.domain.usecases.note.delete_note_use_case import DeleteNoteUseCase
+from app.domain.usecases.note.update_note_use_case import UpdateNoteUseCase
 
 from app.domain.usecases.users.register_use_cases import RegisterUserUseCase
 from app.domain.usecases.users.login_use_case import LoginUserUseCase
 from app.domain.usecases.users.get_profile_use_case import GetProfileUseCase
+
 from app.domain.usecases.product.get_products_use_case import GetProductsUseCase  
 from app.domain.usecases.product.add_product_use_case import AddProductUseCase
+from app.domain.usecases.product.delete_product_use_case import DeleteProductUseCase
+
 from app.domain.usecases.cart.add_to_cart_use_case import AddToCartUseCase
 from app.domain.usecases.cart.get_cart_use_case import GetCartUseCase
 from app.domain.usecases.cart.clear_cart_use_case import ClearCartUseCase
-from app.domain.usecases.product.delete_product_use_case import DeleteProductUseCase
+
 from app.domain.ports import TokenProviderPort
 from app.domain.entities import User
 
@@ -45,7 +51,16 @@ class ProductCreateSchema(BaseModel):
     image_url: str
 
 
+class NoteUpdateSchema(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    image_url: str | None = None
+
+
 def create_user_router(
+    create_note_use_case: CreateNoteUseCase,
+    delete_note_use_case: DeleteNoteUseCase,
+    update_note_use_case: UpdateNoteUseCase,
     register_use_case: RegisterUserUseCase,
     login_use_case: LoginUserUseCase,
     get_profile_use_case: GetProfileUseCase,
@@ -128,7 +143,6 @@ def create_user_router(
             "message": "Доступ разрешен. Это ваш закрытый профиль."
         }
 
-
     @router.get("/products", status_code=status.HTTP_200_OK)
     async def get_products(last_id: int | None = None, limit: int = 30):
         """Получение списка продуктов
@@ -174,7 +188,6 @@ def create_user_router(
             dict: Данные созданного товара.
         """
         try:
-            
             filename_str = file.filename or "image.jpg"
             file_extension = filename_str.split(".")[-1] if "." in filename_str else "jpg"
             unique_filename = f"{uuid.uuid4()}.{file_extension}"
@@ -202,11 +215,8 @@ def create_user_router(
         except PermissionError as e:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
         except Exception as e:
-            
-            print(f"Ошибка загрузки изображения: {e}")
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ошибка загрузки файла")
 
-    
     @router.get("/cart", status_code=status.HTTP_200_OK)
     async def get_cart(current_user: User = Depends(get_current_user)):
         """Получение списка товаров в конзине пользователя.
@@ -230,7 +240,6 @@ def create_user_router(
         except Exception:
             raise HTTPException(status_code=500, detail="Ошибка получения корзины")
 
-    
     @router.post("/cart/{product_id}", status_code=status.HTTP_200_OK)
     async def add_to_cart(product_id: int, current_user: User = Depends(get_current_user)):
         """Добавление товара в корзину пользователя.
@@ -255,7 +264,6 @@ def create_user_router(
         except Exception:
             raise HTTPException(status_code=500, detail="Ошибка добавления в корзину")
 
-
     @router.delete("/cart", status_code=status.HTTP_200_OK)
     async def clear_cart(current_user: User = Depends(get_current_user)):
         """Удаление всех товаров из корзины пользователя.   
@@ -278,7 +286,6 @@ def create_user_router(
         except Exception:
             raise HTTPException(status_code=500, detail="Ошибка очистки корзины")
 
-    
     @router.delete("/products/{product_id}", status_code=status.HTTP_200_OK)
     async def delete_product(product_id: int, current_user: User = Depends(get_current_user)):
         """Удаление конкретного товара. Доступно только с правами админимтратора.
@@ -296,26 +303,16 @@ def create_user_router(
             dict: Флаг операции и сообщение.
         """
         try:
-            
             image_url = await delete_product_use_case.execute(
                 user_role=current_user.role,
                 product_id=product_id
             )
-            
             if not image_url:
                 raise HTTPException(status_code=404, detail="Товар не найден в базе")
-            
-            
-            
             filename = image_url.split("/")[-1]
-            
-            
             file_path = os.path.join("app", "static", "uploads", filename)
-            
-            
             if os.path.exists(file_path):
                 os.remove(file_path) 
-            
             return {"success": True, "message": "Товар удален из БД, файл стерт с диска!"}
             
         except PermissionError as e:
@@ -324,4 +321,63 @@ def create_user_router(
             print(f"Ошибка удаления: {e}")
             raise HTTPException(status_code=500, detail="Ошибка удаления товара")
 
+    @router.post("/note", status_code=status.HTTP_200_OK)
+    async def create_note(
+        title: str = Form(...),
+        description: str = Form(...),
+        file: UploadFile = File(...),
+        current_user: User = Depends(get_current_user)
+    ):
+        try:
+            filename_str = file.filename or "image.jpg"
+            file_extension = filename_str.split(".")[-1] if "." in filename_str else "jpg"
+            unique_filename = f"{uuid.uuid4()}.{file_extension}"
+            upload_dir = os.path.join("app", "static", "uploads")
+            os.makedirs(upload_dir, exist_ok=True)
+            
+            file_path = os.path.join(upload_dir, unique_filename)
+            with open(file_path, "wb") as buffer:
+                    shutil.copyfileobj(file.file, buffer)
+                
+            static_folder_path = "/static/uploads/"
+            image_url = static_folder_path + unique_filename
+            new_product = await create_note_use_case.execute(
+                    user_role=current_user.role,
+                    title=title,
+                    description=description,
+                    image_url=image_url
+                )
+            return new_product
+
+        except PermissionError as e:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ошибка загрузки файла")
+
+    @router.delete("/note/{note_id}", status_code=status.HTTP_200_OK)
+    async def delete_note(note_id: int, current_ures: User = Depends(get_current_user)):
+        try:
+            return await delete_note_use_case.execute(user_role=current_ures.role, id=note_id)
+        except PermissionError as e:
+            raise HTTPException(status_code=403, detail=str(e))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+        
+    @router.patch("/note/{note_id}", status_code=status.HTTP_200_OK)
+    async def update_note(note_id: int, data: NoteUpdateSchema, current_user: User = Depends(get_current_user)):
+        try:
+            update_data = data.model_dump(exclude_unset=True)
+            if not update_data:
+                return {"massage": "no data for updating."}
+            success = await update_note_use_case.execute(user_role=current_user.role, id=note_id, field_to_update=update_data)
+            if not success:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                )
+            return {"message": "Заметка успешно обновлена"}        
+        except PermissionError as e:
+            raise HTTPException(status_code=403, detail=str(e))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+        
     return router

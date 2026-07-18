@@ -1,4 +1,4 @@
-from ports import NoteRepositoryPort
+from app.domain.ports import NoteRepositoryPort
 import os
 
 

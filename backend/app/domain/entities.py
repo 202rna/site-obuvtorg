@@ -24,7 +24,7 @@ class Order:
 
 @dataclass
 class Note:
-    """Сущность заметки/новости
+    """Сущность заметки
     """
     id: Optional[int] = None
     title: str = ""

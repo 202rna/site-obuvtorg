@@ -3,8 +3,8 @@ from app.domain.ports import NoteRepositoryPort
 
 
 class UpdateNoteUseCase:
-    def __init__(self, note_rep: NoteRepositoryPort) -> None:
-        self.note_rep = note_rep
+    def __init__(self, note_repo: NoteRepositoryPort) -> None:
+        self.note_rep = note_repo
         
     async def execute(self, user_role: str, id: int, field_to_update: dict) -> bool:
         """Частичное обновление заметки по переданным полям.

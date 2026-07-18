@@ -307,3 +307,5 @@ class PostgresNoteRepository(NoteRepositoryPort):
                     return row[0]   # Или строчку или None если поле в БД равно Null
         except Exception:
             return False
+
+    async def get()
