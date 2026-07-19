@@ -1,0 +1,150 @@
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  background-color: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  width: 100%;
+  padding: 16px 24px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  margin-bottom: 40px;
+  gap: 16px;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+  box-sizing: border-box;
+}
+
+.brandBlock {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.logo {
+  font-weight: 800;
+  font-size: 20px;
+  color: #4f46e5;
+  text-decoration: none;
+  letter-spacing: -0.5px;
+}
+
+.contacts {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  color: #64748b;
+  border-left: 1px solid #e2e8f0;
+  padding-left: 12px;
+}
+
+.phone {
+  font-weight: 600;
+  color: #0f172a;
+  text-decoration: none;
+  margin-bottom: 2px;
+}
+
+.links {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  flex-wrap: wrap;
+  flex: 1 0 auto;
+  justify-content: center;
+}
+
+.link {
+  text-decoration: none;
+  color: #4b5563;
+  font-weight: 500;
+  font-size: 15px;
+}
+
+.activeLink {
+  text-decoration: none;
+  color: #4f46e5;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.rightBlock {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.btnOut {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #4f46e5;
+  background-color: #f5f3ff;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btnIn {
+  text-decoration: none;
+  background-color: #4f46e5;
+  color: #ffffff;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.badge {
+  background-color: #e0e7ff;
+  color: #4f46e5;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 12px;
+  margin-left: 6px;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .nav {
+    padding: 12px 16px;
+    gap: 8px;
+  }
+  .brandBlock {
+    gap: 8px;
+  }
+  .logo {
+    font-size: 18px;
+  }
+  .contacts {
+    display: none;
+  }
+  .links {
+    gap: 12px;
+    justify-content: center;
+  }
+  .link,
+  .activeLink {
+    font-size: 16px;
+    padding: 4px 0;
+  }
+  .rightBlock {
+    gap: 8px;
+  }
+  .btnOut,
+  .btnIn {
+    padding: 6px 14px;
+    font-size: 13px;
+  }
+  .adminLink {
+    border-left: none !important;
+    padding-left: 0 !important;
+  }
+}

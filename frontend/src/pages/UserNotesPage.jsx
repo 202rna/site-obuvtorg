@@ -108,7 +108,7 @@ export default function UserNotesPage({ API_URL }) {
   return (
     <div style={styles.container}>
       <h2 style={{ color: "#0f172a", fontSize: "28px", fontWeight: "800" }}>
-        📄 Полезные заметки и ноты
+        📄 Новостная лента
       </h2>
 
       <div style={styles.grid}>
