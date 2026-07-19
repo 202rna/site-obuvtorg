@@ -1,7 +1,8 @@
+/* Navigation.module.css */
+
 .nav {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
   align-items: center;
   background-color: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
@@ -15,13 +16,16 @@
     -apple-system,
     sans-serif;
   box-sizing: border-box;
+  max-width: 100%;
+  overflow: hidden; /* предотвращает вылезание за пределы */
 }
 
 .brandBlock {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-shrink: 0;
+  flex-shrink: 0; /* не сжимается, но при необходимости переносится */
+  flex-wrap: wrap; /* разрешает перенос содержимого внутри */
 }
 
 .logo {
@@ -30,6 +34,7 @@
   color: #4f46e5;
   text-decoration: none;
   letter-spacing: -0.5px;
+  white-space: nowrap; /* логотип не разбивается */
 }
 
 .contacts {
@@ -39,6 +44,8 @@
   color: #64748b;
   border-left: 1px solid #e2e8f0;
   padding-left: 12px;
+  white-space: normal; /* разрешаем перенос адреса */
+  min-width: 0; /* помогает при переносе */
 }
 
 .phone {
@@ -46,6 +53,7 @@
   color: #0f172a;
   text-decoration: none;
   margin-bottom: 2px;
+  white-space: nowrap; /* телефон не разбиваем */
 }
 
 .links {
@@ -53,8 +61,7 @@
   gap: 24px;
   align-items: center;
   flex-wrap: wrap;
-  flex: 1 0 auto;
-  justify-content: center;
+  flex: 0 1 auto; /* не растягивается, занимает только нужное место */
 }
 
 .link {
@@ -62,6 +69,7 @@
   color: #4b5563;
   font-weight: 500;
   font-size: 15px;
+  white-space: nowrap; /* ссылки не разбиваются */
 }
 
 .activeLink {
@@ -69,13 +77,14 @@
   color: #4f46e5;
   font-weight: 600;
   font-size: 15px;
+  white-space: nowrap;
 }
 
 .rightBlock {
   display: flex;
   align-items: center;
   gap: 16px;
-  flex-shrink: 0;
+  flex-shrink: 0; /* не сжимается */
 }
 
 .btnOut {
@@ -112,39 +121,57 @@
   font-weight: 600;
 }
 
+/* Стиль для админских ссылок (убираем левую границу на мобильных) */
+.adminLink {
+  border-left: none !important;
+  padding-left: 0 !important;
+}
+
+/* ===== Мобильные стили (≤ 768px) ===== */
 @media (max-width: 768px) {
   .nav {
     padding: 12px 16px;
     gap: 8px;
   }
+
   .brandBlock {
     gap: 8px;
+    flex-wrap: wrap; /* разрешаем перенос логотипа и контактов */
   }
+
   .logo {
     font-size: 18px;
   }
+
   .contacts {
-    display: none;
+    font-size: 10px;
+    padding-left: 8px;
+    border-left: 1px solid #e2e8f0; /* оставляем границу */
   }
+
+  .phone {
+    font-size: 12px;
+  }
+
   .links {
     gap: 12px;
-    justify-content: center;
   }
+
   .link,
   .activeLink {
     font-size: 16px;
     padding: 4px 0;
   }
+
   .rightBlock {
     gap: 8px;
   }
+
   .btnOut,
   .btnIn {
     padding: 6px 14px;
     font-size: 13px;
   }
-  .adminLink {
-    border-left: none !important;
-    padding-left: 0 !important;
-  }
+
+  /* Админские ссылки на мобильных получают класс .adminLink, который убирает границу */
 }

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import styles from "./Navigation.module.css"; // импорт стилей
+import styles from "./Navigation.module.css";
 
 export default function Navigation({
   token,
@@ -52,7 +52,7 @@ export default function Navigation({
             </Link>
             <Link
               to="/admin/notes"
-              className={styles.link}
+              className={`${styles.link} ${styles.adminLink}`}
               style={{ color: "#ef4444", fontWeight: "600" }}
             >
               📄 Заметки
