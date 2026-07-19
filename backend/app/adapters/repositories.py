@@ -3,6 +3,8 @@ from psycopg_pool import AsyncConnectionPool
 from app.domain.ports import UserRepositoryPort, ProductRepositoryPort, CartRepositoryPort, NoteRepositoryPort
 from app.domain.entities import User
 from app.domain.ports import MissingType
+from datetime import datetime, timezone
+
 
 class PostgresUserRepository(UserRepositoryPort):
     """Репозиторий для управления данными пользователей в PostgreSQL
@@ -225,16 +227,16 @@ class PostgresNoteRepository(NoteRepositoryPort):
     def __init__(self, pool: AsyncConnectionPool[Any]) -> None:
         self.pool = pool
     
-    async def add(self, title: str, description: str, image_url: str | None = None) -> bool:
+    async def add(self, created_time: datetime, title: str, description: str, image_url: str | None = None) -> bool:
         try:
             async with self.pool.connection() as conn:
                 async with conn.cursor() as cur:
                     await cur.execute(
                         """
-                        INSERT INTO notes (title, description, image_url) 
+                        INSERT INTO notes (title, description, image_url, created_time) 
                         VALUES %s, %s, %s"
                         """,
-                        (title, description, image_url)
+                        (title, description, image_url, created_time)
                     )
                     return True
         except Exception:
@@ -262,6 +264,7 @@ class PostgresNoteRepository(NoteRepositoryPort):
     
     async def update(
         self,
+        created_time: datetime,
         note_id: int, 
         title: str | MissingType = Missing, 
         description: str | MissingType = Missing, 
@@ -307,10 +310,12 @@ class PostgresNoteRepository(NoteRepositoryPort):
                 return True
             
             query_args.append(note_id)
+            query_args.append(created_time)
+            update_fields.append("created_time = %s")
             fields_for_updating_sql = ",".join(update_fields)
             sql_query = f""" 
                 UPDATE notes
-                SET {fields_for_updating_sql}
+                SET {fields_for_updating_sql},
                 WHERE id = %s
                 RETURNING image_url
             """

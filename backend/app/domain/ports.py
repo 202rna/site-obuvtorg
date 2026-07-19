@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 from app.domain.entities import User
+from datetime import datetime, timezone
+
 
 class UserRepositoryPort(ABC):
     """Интерфейс для управление сущностью пользователь."""
@@ -48,7 +50,6 @@ class TokenProviderPort(ABC):
         pass
 
 
-    
 class ProductRepositoryPort(ABC):
     """Интерфейс для управления сущностями товаров"""
     @abstractmethod
@@ -93,7 +94,7 @@ class MissingType:
 
 class NoteRepositoryPort(ABC):
     @abstractmethod
-    async def add(self, title: str, description: str, image_url: str | None = None) -> bool:
+    async def add(self, created_time: datetime, title: str, description: str, image_url: str | None = None) -> bool:
         """Добавление заметки"""
         pass
     
@@ -104,7 +105,8 @@ class NoteRepositoryPort(ABC):
     
     @abstractmethod
     async def update(
-        self, 
+        self,
+        created_time: datetime,
         note_id: int, 
         title: str | MissingType = MissingType(), 
         description: str | MissingType = MissingType(), 
