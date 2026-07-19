@@ -393,7 +393,7 @@ def create_user_router(
         try:
             return await get_one_note_use_case.execute(note_id=note_id)
         except Exception:
-            raise HTTPException(status_code=500, detail="Ошибка получения корзины")
+            raise HTTPException(status_code=500, detail="Ошибка получения заметки.")
 
     @router.get("/notes", status_code=status.HTTP_200_OK)
     async def get_notes(last_id: int | None = None, limit: int = 30):

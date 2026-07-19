@@ -375,7 +375,6 @@ class PostgresNoteRepository(NoteRepositoryPort):
             
     async def get_one(self, note_id: int) -> dict:
         """Получение заметки одной по идентификатору.
-
         Args:
             note_id (int): ID заметки.
 
@@ -388,7 +387,7 @@ class PostgresNoteRepository(NoteRepositoryPort):
         row = None
         try:
             async with self.pool.connection() as conn:
-                async with conn.cursor as cur:
+                async with conn.cursor() as cur:
                     await cur.execute(
                         """
                         SELECT id, title, description, image_url, created_time
