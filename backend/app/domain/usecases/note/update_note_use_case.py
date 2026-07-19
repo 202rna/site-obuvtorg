@@ -1,5 +1,6 @@
 import os
 from app.domain.ports import NoteRepositoryPort
+from datetime import datetime, timezone
 
 
 class UpdateNoteUseCase:
@@ -21,8 +22,8 @@ class UpdateNoteUseCase:
             raise PermissionError("Доступно только администратору.")
         if not field_to_update:
             return True
-        
-        exec_update_note = await self.note_rep.update(id, **field_to_update)
+        current_time = datetime.now(timezone.utc)
+        exec_update_note = await self.note_rep.update(current_time, id, **field_to_update)
         if exec_update_note is False:
             return False
         if exec_update_note is None:

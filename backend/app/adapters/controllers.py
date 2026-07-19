@@ -341,13 +341,15 @@ def create_user_router(
                 
             static_folder_path = "/static/uploads/"
             image_url = static_folder_path + unique_filename
-            new_product = await create_note_use_case.execute(
+            new_note = await create_note_use_case.execute(
                     user_role=current_user.role,
                     title=title,
                     description=description,
                     image_url=image_url
                 )
-            return new_product
+            if not new_note:
+                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return new_note
 
         except PermissionError as e:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))

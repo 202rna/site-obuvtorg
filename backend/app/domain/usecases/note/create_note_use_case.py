@@ -1,4 +1,5 @@
 from app.domain.ports import NoteRepositoryPort
+from datetime import datetime, timezone
 
 
 class CreateNoteUseCase:
@@ -8,4 +9,5 @@ class CreateNoteUseCase:
     async def execute(self, user_role: str, title: str, description: str, image_url: str | None) -> bool:
         if user_role != "admin":
             raise PermissionError("Доступно только администратору.")
-        return await self.note_repo.add(title, description, image_url)
+        current_time = datetime.now(timezone.utc)
+        return await self.note_repo.add(current_time, title, description, image_url)

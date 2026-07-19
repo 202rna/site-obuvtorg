@@ -34,7 +34,6 @@ export default function Navigation({
       letterSpacing: "-0.5px",
     },
 
-    
     contacts: {
       display: "flex",
       flexDirection: "column",
@@ -79,7 +78,7 @@ export default function Navigation({
       border: "none",
       borderRadius: "10px",
       cursor: "pointer",
-      whiteSpace: "nowrap", 
+      whiteSpace: "nowrap",
     },
     btnIn: {
       textDecoration: "none",
@@ -136,19 +135,33 @@ export default function Navigation({
             Корзина <span style={styles.badge}>{cartCount}</span>
           </Link>
         )}
+        {/* --- ПОЛНОСТЬЮ ИСПРАВЛЕННЫЙ И ЗАКРЫТЫЙ БЛОК ДЛЯ АДМИНА --- */}
         {token && userRole === "admin" && (
-          <Link
-            to="/admin"
-            style={{
-              ...styles.link,
-              color: "#ef4444",
-              borderLeft: "1px solid #e5e7eb",
-              paddingLeft: "24px",
-              fontWeight: "600",
-            }}
-          >
-            Админка
-          </Link>
+          <>
+            <Link
+              to="/admin"
+              style={{
+                ...styles.link,
+                color: "#ef4444",
+                borderLeft: "1px solid #e5e7eb",
+                paddingLeft: "24px",
+                fontWeight: "600",
+              }}
+            >
+              🛠️ Админка
+            </Link>
+
+            <Link
+              to="/admin/notes"
+              style={{
+                ...styles.link,
+                color: "#ef4444",
+                fontWeight: "600",
+              }}
+            >
+              📄 Заметки
+            </Link>
+          </>
         )}
       </div>
 

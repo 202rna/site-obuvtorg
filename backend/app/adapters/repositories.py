@@ -234,7 +234,7 @@ class PostgresNoteRepository(NoteRepositoryPort):
                     await cur.execute(
                         """
                         INSERT INTO notes (title, description, image_url, created_time) 
-                        VALUES %s, %s, %s"
+                        VALUES (%s, %s, %s, %s)
                         """,
                         (title, description, image_url, created_time)
                     )

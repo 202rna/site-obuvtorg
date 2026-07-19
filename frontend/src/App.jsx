@@ -1,16 +1,15 @@
 import { useState, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
-
 import Navigation from "./components/Navigation.jsx";
 import ProductsPage from "./pages/ProductsPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import CartPage from "./pages/CartPage.jsx";
 import AdminPage from "./pages/AdminPage.jsx";
+import AdminNotesPage from "./pages/AdminNotePage.jsx";
 
 export default function App() {
-  
   const API_URL = "/api";
   const [token, setToken] = useState(localStorage.getItem("token") || "");
   const [profile, setProfile] = useState(null);
@@ -81,7 +80,7 @@ export default function App() {
         const data = await response.json();
         if (response.ok) {
           setProfile(data);
-          fetchCart(token); 
+          fetchCart(token);
         } else {
           handleLogout();
         }
@@ -90,11 +89,9 @@ export default function App() {
       }
     }
     if (token) loadProfile();
-    
   }, [token, API_URL]);
 
   return (
-    
     <div
       style={{
         background:
@@ -158,6 +155,18 @@ export default function App() {
           element={
             token && profile?.role === "admin" ? (
               <AdminPage API_URL={API_URL} token={token} />
+            ) : (
+              <Navigate to="/" />
+            )
+          }
+        />
+
+        {/* --- ДОБАВИЛИ РОУТ УПРАВЛЕНИЯ ЗАМЕТКАМИ ДЛЯ АДМИНА --- */}
+        <Route
+          path="/admin/notes"
+          element={
+            token && profile?.role === "admin" ? (
+              <AdminNotesPage API_URL={API_URL} token={token} />
             ) : (
               <Navigate to="/" />
             )
