@@ -329,22 +329,25 @@ def create_user_router(
     async def create_note(
         title: str = Form(...),
         description: str = Form(...),
-        file: UploadFile = File(...),
+        file: UploadFile = File(None),
         current_user: User = Depends(get_current_user)
     ):
         try:
-            filename_str = file.filename or "image.jpg"
-            file_extension = filename_str.split(".")[-1] if "." in filename_str else "jpg"
-            unique_filename = f"{uuid.uuid4()}.{file_extension}"
-            upload_dir = os.path.join("app", "static", "uploads")
-            os.makedirs(upload_dir, exist_ok=True)
-            
-            file_path = os.path.join(upload_dir, unique_filename)
-            with open(file_path, "wb") as buffer:
-                    shutil.copyfileobj(file.file, buffer)
+            image_url = None
+            if file and file.filename:
+                filename_str = file.filename
+                file_extension = filename_str.split(".")[-1] if "." in filename_str else "jpg"
+                unique_filename = f"{uuid.uuid4()}.{file_extension}"
+                upload_dir = os.path.join("app", "static", "uploads")
+                os.makedirs(upload_dir, exist_ok=True)
                 
-            static_folder_path = "/static/uploads/"
-            image_url = static_folder_path + unique_filename
+                file_path = os.path.join(upload_dir, unique_filename)
+                with open(file_path, "wb") as buffer:
+                        shutil.copyfileobj(file.file, buffer)
+                    
+                static_folder_path = "/static/uploads/"
+                image_url = static_folder_path + unique_filename
+                
             new_note = await create_note_use_case.execute(
                     user_role=current_user.role,
                     title=title,

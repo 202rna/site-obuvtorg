@@ -68,16 +68,18 @@ export default function AdminNotesPage({ API_URL, token }) {
         setLoading(false);
       }
     } else {
-      // --- РЕЖИМ POST СОЗДАНИЯ (Передаем Form-Data с вложенным файлом) ---
-      if (!file) {
-        setMessage("❌ Пожалуйста, выберите файл!");
-        setLoading(false);
-        return;
-      }
+      //   // --- РЕЖИМ POST СОЗДАНИЯ (Передаем Form-Data с вложенным файлом) ---
+      //   if (!file) {
+      //     setMessage("❌ Пожалуйста, выберите файл!");
+      //     setLoading(false);
+      //     return;
+      //   }
       const formData = new FormData();
       formData.append("title", title);
       formData.append("description", description);
-      formData.append("file", file);
+      if (file && file[0]) {
+        formData.append("file", file[0]);
+      }
 
       try {
         const response = await fetch(`${API_URL}/note`, {
@@ -266,7 +268,6 @@ export default function AdminNotesPage({ API_URL, token }) {
                   type="file"
                   style={styles.input}
                   onChange={(e) => setFile(e.target.files[0])}
-                  required
                 />
               </>
             )}
