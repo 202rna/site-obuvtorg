@@ -22,6 +22,8 @@ from app.domain.usecases.product.delete_product_use_case import DeleteProductUse
 from app.domain.usecases.note.create_note_use_case import CreateNoteUseCase
 from app.domain.usecases.note.delete_note_use_case import DeleteNoteUseCase
 from app.domain.usecases.note.update_note_use_case import UpdateNoteUseCase
+from app.domain.usecases.note.get_all_use_case import GetAllNotesUseCase
+from app.domain.usecases.note.get_one_by_id_use_case import GetOneNoteByIdUseCase
 
 
 @asynccontextmanager
@@ -64,7 +66,8 @@ product_repository = PostgresProductRepository(db_pool)
 cart_repository = PostgresCartRepository(db_pool)  
 note_repository = PostgresNoteRepository(db_pool)
 
-
+get_all_notes_use_case = GetAllNotesUseCase(note_repo=note_repository)
+get_one_note_by_id_use_case = GetOneNoteByIdUseCase(note_repo=note_repository)
 create_note_use_case = CreateNoteUseCase(note_repo=note_repository)
 update_note_use_case = UpdateNoteUseCase(note_repo=note_repository)
 delete_note_use_case = DeleteNoteUseCase(note_repo=note_repository)
@@ -80,6 +83,8 @@ clear_cart_use_case = ClearCartUseCase(cart_repo=cart_repository)
 
 
 user_router = create_user_router(
+    get_all_notes_use_case=get_all_notes_use_case,
+    get_one_note_use_case=get_one_note_by_id_use_case,
     create_note_use_case=create_note_use_case,
     update_note_use_case=update_note_use_case,
     delete_note_use_case=delete_note_use_case,

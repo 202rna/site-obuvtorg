@@ -4,6 +4,7 @@ from app.domain.ports import UserRepositoryPort, ProductRepositoryPort, CartRepo
 from app.domain.entities import User
 from app.domain.ports import MissingType
 from datetime import datetime, timezone
+from fastapi import HTTPException, status
 
 
 class PostgresUserRepository(UserRepositoryPort):
@@ -219,8 +220,6 @@ class PostgresCartRepository(CartRepositoryPort):
                 await cur.execute("DELETE FROM cart_items WHERE user_id = %s", (user_id,))
 
 
-
-
 Missing = MissingType()
 
 class PostgresNoteRepository(NoteRepositoryPort):
@@ -291,14 +290,10 @@ class PostgresNoteRepository(NoteRepositoryPort):
             query_args = list()
             
             if title is not Missing:
-                if title is None:
-                    return False
                 update_fields.append("title = %s")
                 query_args.append(title)
             
             if description is not Missing:
-                if description is None:
-                    return False
                 update_fields.append("description = %s")
                 query_args.append(description)
             
@@ -309,13 +304,14 @@ class PostgresNoteRepository(NoteRepositoryPort):
             if not update_fields:
                 return True
             
-            query_args.append(note_id)
             query_args.append(created_time)
             update_fields.append("created_time = %s")
+            
             fields_for_updating_sql = ",".join(update_fields)
+            query_args.append(note_id)
             sql_query = f""" 
                 UPDATE notes
-                SET {fields_for_updating_sql},
+                SET {fields_for_updating_sql}
                 WHERE id = %s
                 RETURNING image_url
             """
@@ -328,3 +324,92 @@ class PostgresNoteRepository(NoteRepositoryPort):
                     return row[0]   # Или строчку или None если поле в БД равно Null
         except Exception:
             return False
+
+    async def get_all(self, last_id: int | None, limit: int) -> List[dict]:
+        """Постраничное получение всех заметок.
+
+        Args:
+            last_id (int | None): Идентификатор последней заметки.
+            limit (int): Количество заметок на стринице.
+
+        Returns:
+            List[dict]: Список из словарей. Каждый словарь содержит поля для Note.
+        """        
+        try:
+            async with self.pool.connection() as conn:
+                async with conn.cursor() as cur:
+                    if last_id is None:
+                        await cur.execute(
+                            "SELECT id, title, description, image_url, created_time FROM notes ORDER BY id ASC LIMIT %s",
+                            (limit,)
+                        )
+                    else:
+                        await cur.execute(
+                            """
+                            SELECT id, title, description, image_url, created_time
+                            FROM notes
+                            WHERE id > %s
+                            ORDER BY id ASC
+                            LIMIT %s
+                            """,
+                            (last_id, limit)
+                        )
+                    
+                    rows = await cur.fetchall()
+
+                    notes = []
+                    for row in rows:
+                        notes.append({
+                            "id": row[0],
+                            "title": row[1],
+                            "description": row[2],
+                            "image_url": row[3],
+                            "created_time": row[4]
+                        })
+                    return notes
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Проблемы с подключением к БД."
+            )
+            
+    async def get_one(self, note_id: int) -> dict:
+        """Получение заметки одной по идентификатору.
+
+        Args:
+            note_id (int): ID заметки.
+
+        Raises:
+            HTTPException: 500 Ошибка получения данных или подключения к БД.
+
+        Returns:
+            dict: Словарь с данными заметки.
+        """        
+        row = None
+        try:
+            async with self.pool.connection() as conn:
+                async with conn.cursor as cur:
+                    await cur.execute(
+                        """
+                        SELECT id, title, description, image_url, created_time
+                        FROM notes
+                        WHERE id = %s
+                        """,
+                        (note_id,)
+                    )
+                    row = await cur.fetchone()
+        except Exception:
+            HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Проблемы с подключением к БД."
+        )
+        if row is None:
+            raise HTTPException(status_code=500, detail="Ошибка БД")
+        
+        return {
+            "id": row[0],
+            "title": row[1],
+            "description": row[2],
+            "image_url": row[3],
+            "created_time": row[4]
+        }

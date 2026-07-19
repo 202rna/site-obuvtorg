@@ -125,6 +125,9 @@ export default function Navigation({
         <Link to="/" style={styles.activeLink}>
           Каталог
         </Link>
+        <Link to="/notes" style={styles.link}>
+          📄 Заметки
+        </Link>
         {token && (
           <Link to="/profile" style={styles.link}>
             Профиль

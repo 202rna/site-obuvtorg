@@ -8,6 +8,8 @@ import ProfilePage from "./pages/ProfilePage.jsx";
 import CartPage from "./pages/CartPage.jsx";
 import AdminPage from "./pages/AdminPage.jsx";
 import AdminNotesPage from "./pages/AdminNotePage.jsx";
+import UserNotesPage from "./pages/UserNotesPage.jsx";
+import NoteDetailPage from "./pages/NoteDetailPage.jsx";
 
 export default function App() {
   const API_URL = "/api";
@@ -121,6 +123,11 @@ export default function App() {
               cart={cart}
             />
           }
+        />
+        <Route path="/notes" element={<UserNotesPage API_URL={API_URL} />} />
+        <Route
+          path="/note/:id"
+          element={<NoteDetailPage API_URL={API_URL} />}
         />
 
         <Route

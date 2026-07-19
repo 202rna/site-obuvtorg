@@ -114,3 +114,12 @@ class NoteRepositoryPort(ABC):
         ) -> str | None | bool:
         """Изменение названия/содержимого/фотографии заметки"""
         pass
+    
+    @abstractmethod
+    async def get_all(self, last_id: int | None, limit: int) -> list:
+        """Получение заметок по курсору."""
+        pass
+    
+    @abstractmethod
+    async def get_one(self, note_id: int) -> dict:
+        """Получение конкретной заметки для чтения."""

@@ -8,85 +8,131 @@ export default function AdminNotesPage({ API_URL, token }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  // 1. Загрузка списка существующих заметок
+  // ID заметки, которую сейчас правим (если null — режим создания)
+  const [editingId, setEditingId] = useState(null);
+
   async function fetchNotes() {
     try {
-      // Предполагаем, что у тебя есть GET /note или GET /products для заметок.
-      // Если GET роута еще нет, пока оставим пустой массив или запросим с бэка
-      const response = await fetch(`${API_URL}/products?limit=100`);
+      const response = await fetch(`${API_URL}/notes?limit=100`);
       const data = await response.json();
-      if (response.ok) {
-        // Если заметки лежат в общей таблице, отфильтруем их или выведем все
-        setNotes(data);
-      }
+      if (response.ok) setNotes(data);
     } catch (err) {
-      console.error("Не удалось загрузить заметки:", err);
+      console.error(err);
     }
   }
 
-  // ИСПРАВЛЕНО: Заворачиваем вызов в изолированную асинхронную функцию внутри эффекта
   useEffect(() => {
-    async function loadInitialNotes() {
+    async function loadData() {
       await fetchNotes();
     }
-    loadInitialNotes();
+    loadData();
 
-    // Передаем токен и API_URL в массив зависимостей, чтобы эффект не перезапускался бесконечно
+    // Добавляем зависимости, чтобы эффект знал, когда перезапускаться, и не уходил в бесконечный цикл
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [API_URL, token]);
 
-  // 2. Отправка новой заметки на бэкенд (POST /note)
-  async function handleCreateNote(e) {
+  // Главная функция отправки формы
+  async function handleSubmit(e) {
     e.preventDefault();
-    if (!file) {
-      setMessage("❌ Пожалуйста, выберите файл!");
-      return;
-    }
-
     setLoading(true);
     setMessage("");
 
-    const formData = new FormData();
-    formData.append("title", title);
-    formData.append("description", description);
-    formData.append("file", file); // Твой UploadFile = File(...) на бэкенде
+    if (editingId) {
+      // --- РЕЖИМ PATCH ОБНОВЛЕНИЯ (Передаем JSON по твоей NoteUpdateSchema) ---
+      try {
+        // ПРОВЕРЬ И ИСПРАВЬ ЭТУ СТРОКУ В AdminNotesPage.jsx:
+        // Убедись, что перед note стоит косая черта, а после нее идет ID без лишних знаков
+        // ИСПРАВЛЕНО: Перед note обязательно должен быть слэш, и перед ${editingId} тоже!
+        const response = await fetch(`${API_URL}/note/${editingId}`, {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ title, description }), // Отправляем ровно те поля, что ждут в NoteUpdateSchema
+        });
 
-    try {
-      const response = await fetch(`${API_URL}/note`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` }, // Передаем токен админа
-        body: formData, // Для файлов заголовки Content-Type ставить НЕЛЬЗЯ, браузер сделает это сам
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setMessage("✅ Заметка успешно создана и файл загружен!");
-        setTitle("");
-        setDescription("");
-        setFile(null);
-        document.getElementById("noteFileInput").value = ""; // Сбрасываем инпут файла
-        fetchNotes(); // Обновляем список на экране
-      } else {
-        setMessage(`❌ Ошибка: ${data.detail || "Не удалось создать заметку"}`);
+        const data = await response.json();
+        if (response.ok) {
+          setMessage("✅ Заметка успешно обновлена!");
+          setEditingId(null);
+          setTitle("");
+          setDescription("");
+          fetchNotes();
+        } else {
+          setMessage(`❌ Ошибка: ${data.detail || "Не удалось обновить"}`);
+        }
+      } catch {
+        setMessage("❌ Ошибка соединения при обновлении");
+      } finally {
+        setLoading(false);
       }
-    }  finally {
-      setLoading(false);
+    } else {
+      // --- РЕЖИМ POST СОЗДАНИЯ (Передаем Form-Data с вложенным файлом) ---
+      if (!file) {
+        setMessage("❌ Пожалуйста, выберите файл!");
+        setLoading(false);
+        return;
+      }
+      const formData = new FormData();
+      formData.append("title", title);
+      formData.append("description", description);
+      formData.append("file", file);
+
+      try {
+        const response = await fetch(`${API_URL}/note`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+        if (response.ok) {
+          setMessage("✅ Заметка успешно создана!");
+          setTitle("");
+          setDescription("");
+          setFile(null);
+          if (document.getElementById("adminNoteFile"))
+            document.getElementById("adminNoteFile").value = "";
+          fetchNotes();
+        } else {
+          const errData = await response.json();
+          setMessage(
+            `❌ Ошибка: ${errData.detail || "Не удалось создать заметку"}`,
+          );
+        }
+      } catch {
+        setMessage("❌ Ошибка соединения при создании");
+      } finally {
+        setLoading(false);
+      }
     }
   }
 
-  // 3. Удаление заметки (DELETE /note/{id})
-  async function handleDeleteNote(noteId) {
-    if (!window.confirm("Удалить эту заметку навсегда?")) return;
+  // Переключение формы в режим редактирования
+  function startEdit(note) {
+    setEditingId(note.id);
+    setTitle(note.title);
+    setDescription(note.description);
+  }
 
+  // Выход из режима редактирования
+  function cancelEdit() {
+    setEditingId(null);
+    setTitle("");
+    setDescription("");
+  }
+
+  // ДЕЙСТВИЕ: Удаление заметки (DELETE)
+  async function handleDelete(id) {
+    if (!window.confirm("Вы уверены, что хотите навсегда удалить эту заметку?"))
+      return;
     try {
-      const response = await fetch(`${API_URL}/note/${noteId}`, {
+      const response = await fetch(`${API_URL}/note/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
-
       if (response.ok) {
-        setNotes((prev) => prev.filter((n) => n.id !== noteId));
+        setNotes((prev) => prev.filter((n) => n.id !== id));
+        if (editingId === id) cancelEdit();
       } else {
         alert("Не удалось удалить заметку");
       }
@@ -97,8 +143,9 @@ export default function AdminNotesPage({ API_URL, token }) {
 
   const styles = {
     container: {
+      width: "100%",
       maxWidth: "100%",
-      padding: "0 40px",
+      padding: "0 24px",
       boxSizing: "border-box",
       fontFamily: "system-ui, sans-serif",
     },
@@ -108,39 +155,30 @@ export default function AdminNotesPage({ API_URL, token }) {
       flexWrap: "wrap",
       marginTop: "24px",
     },
-    formCard: {
+    card: {
       backgroundColor: "#fff",
       padding: "32px",
       borderRadius: "16px",
       boxShadow: "0 4px 20px rgba(0,0,0,0.02)",
       border: "1px solid #f1f5f9",
-      flex: "1 1 400px",
-    },
-    listCard: {
-      backgroundColor: "#fff",
-      padding: "32px",
-      borderRadius: "16px",
-      boxShadow: "0 4px 20px rgba(0,0,0,0.02)",
-      border: "1px solid #f1f5f9",
-      flex: "1 1 500px",
+      flex: "1 1 450px",
     },
     input: {
       width: "100%",
       padding: "12px",
-      fontSize: "15px",
       borderRadius: "10px",
       border: "1px solid #e2e8f0",
       boxSizing: "border-box",
       marginBottom: "16px",
       outline: "none",
-      fontFamily: "inherit",
+      fontSize: "15px",
     },
     label: {
       display: "block",
       fontSize: "14px",
-      color: "#475569",
-      marginBottom: "8px",
       fontWeight: "600",
+      color: "#475569",
+      marginBottom: "6px",
     },
     btn: {
       width: "100%",
@@ -148,25 +186,23 @@ export default function AdminNotesPage({ API_URL, token }) {
       fontSize: "15px",
       fontWeight: "600",
       color: "#fff",
-      backgroundColor: "#4f46e5",
       border: "none",
       borderRadius: "12px",
       cursor: "pointer",
-      boxShadow: "0 4px 12px rgba(79, 70, 229, 0.15)",
+      transition: "background-color 0.2s",
     },
-    noteItem: {
+    item: {
       display: "flex",
       justifyContent: "space-between",
       alignItems: "center",
       padding: "16px 0",
       borderBottom: "1px solid #f1f5f9",
     },
-    delBtn: {
-      backgroundColor: "transparent",
-      color: "#ef4444",
+    actionBtn: {
+      background: "none",
       border: "none",
-      cursor: "pointer",
       fontWeight: "600",
+      cursor: "pointer",
       fontSize: "14px",
     },
   };
@@ -174,9 +210,8 @@ export default function AdminNotesPage({ API_URL, token }) {
   return (
     <div style={styles.container}>
       <h2 style={{ color: "#0f172a", fontSize: "26px", fontWeight: "800" }}>
-        Панель управления заметками (Notes) 📄
+        Панель управления заметками 📄
       </h2>
-
       {message && (
         <div
           style={{
@@ -193,92 +228,108 @@ export default function AdminNotesPage({ API_URL, token }) {
       )}
 
       <div style={styles.wrapper}>
-        {/* ФОРМА СОЗДАНИЯ ЗАМЕТКИ */}
-        <div style={styles.formCard}>
-          <h3
-            style={{
-              margin: "0 0 20px 0",
-              fontSize: "18px",
-              fontWeight: "700",
-            }}
-          >
-            Создать новую заметку
+        {/* ФОРМА СОЗДАНИЯ / PATCH ОБНОВЛЕНИЯ */}
+        <div style={styles.card}>
+          <h3 style={{ margin: "0 0 20px 0", fontWeight: "700" }}>
+            {editingId
+              ? "📝 Редактировать публикацию"
+              : "🚀 Создать новую заметку"}
           </h3>
-          <form onSubmit={handleCreateNote}>
-            <label style={styles.label}>Название заметки</label>
+          <form onSubmit={handleSubmit}>
+            <label style={styles.label}>Название</label>
             <input
               type="text"
               style={styles.input}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Например: Ноты - Бетховен Симфония 5"
+              placeholder="Введите название публикации"
               required
             />
 
-            <label style={styles.label}>Краткое описание / Аннотация</label>
+            <label style={styles.label}>Полный текст</label>
             <textarea
-              style={{ ...styles.input, height: "100px", resize: "vertical" }}
+              style={{ ...styles.input, height: "140px", resize: "vertical" }}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Введите текст заметки или описание вложенного файла"
+              placeholder="Введите текст или аннотацию к файлу"
               required
             />
 
-            <label style={styles.label}>
-              Вложить файл (Документ, Картинка, PDF) 📁
-            </label>
-            <input
-              id="noteFileInput"
-              type="file"
-              style={styles.input}
-              onChange={(e) => setFile(e.target.files[0])}
-              required
-            />
+            {/* При PATCH обновлении поле файла скрывается, так как мы обновляем только текстовые поля в схеме */}
+            {!editingId && (
+              <>
+                <label style={styles.label}>
+                  Прикрепить файл (Документ, Ноты, Картинка)
+                </label>
+                <input
+                  id="adminNoteFile"
+                  type="file"
+                  style={styles.input}
+                  onChange={(e) => setFile(e.target.files[0])}
+                  required
+                />
+              </>
+            )}
 
-            <button type="submit" style={styles.btn} disabled={loading}>
-              {loading ? "Загрузка файла..." : "🚀 Опубликовать заметку"}
+            <button
+              type="submit"
+              style={{
+                ...styles.btn,
+                backgroundColor: editingId ? "#10b981" : "#4f46e5",
+              }}
+              disabled={loading}
+            >
+              {loading
+                ? "Обработка запроса..."
+                : editingId
+                  ? "Сохранить изменения (PATCH)"
+                  : "Опубликовать заметку (POST)"}
             </button>
+            {editingId && (
+              <button
+                type="button"
+                onClick={cancelEdit}
+                style={{
+                  ...styles.btn,
+                  backgroundColor: "#64748b",
+                  marginTop: "10px",
+                }}
+              >
+                Отменить редактирование
+              </button>
+            )}
           </form>
         </div>
 
-        {/* СПИСОК ВСЕХ ЗАМЕТОК ДЛЯ УДАЛЕНИЯ */}
-        <div style={styles.listCard}>
-          <h3
-            style={{
-              margin: "0 0 20px 0",
-              fontSize: "18px",
-              fontWeight: "700",
-            }}
-          >
-            Текущие публикации
+        {/* СПИСОК ПУБЛИКАЦИЙ АДМИНА */}
+        <div style={styles.card}>
+          <h3 style={{ margin: "0 0 20px 0", fontWeight: "700" }}>
+            Все публикации (Только заголовки)
           </h3>
           {notes.length === 0 ? (
             <p style={{ color: "#64748b", fontStyle: "italic" }}>
-              Список заметок пуст.
+              Заметок пока нет.
             </p>
           ) : (
             notes.map((n) => (
-              <div key={n.id} style={styles.noteItem}>
-                <div>
-                  <div style={{ fontWeight: "600", color: "#0f172a" }}>
-                    {n.title}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: "13px",
-                      color: "#64748b",
-                      marginTop: "2px",
-                    }}
+              <div key={n.id} style={styles.item}>
+                <span style={{ fontWeight: "600", color: "#0f172a" }}>
+                  {n.title}
+                </span>
+                <div style={{ display: "flex", gap: "16px" }}>
+                  <button
+                    onClick={() => startEdit(n)}
+                    style={{ ...styles.actionBtn, color: "#4f46e5" }}
                   >
-                    {n.description.substring(0, 50)}...
-                  </div>
+                    Правка
+                  </button>
+                  <button
+                    onClick={() => handleDelete(n.id)}
+                    style={{ ...styles.actionBtn, color: "#ef4444" }}
+                  >
+                    Удалить
+                  </button>
                 </div>
-                <button
-                  style={styles.delBtn}
-                  onClick={() => handleDeleteNote(n.id)}
-                >
-                  🗑️ Удалить
-                </button>
               </div>
             ))
           )}

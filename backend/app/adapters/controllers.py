@@ -10,6 +10,8 @@ import uuid
 from app.domain.usecases.note.create_note_use_case import CreateNoteUseCase
 from app.domain.usecases.note.delete_note_use_case import DeleteNoteUseCase
 from app.domain.usecases.note.update_note_use_case import UpdateNoteUseCase
+from app.domain.usecases.note.get_one_by_id_use_case import GetOneNoteByIdUseCase
+from app.domain.usecases.note.get_all_use_case import GetAllNotesUseCase
 
 from app.domain.usecases.users.register_use_cases import RegisterUserUseCase
 from app.domain.usecases.users.login_use_case import LoginUserUseCase
@@ -58,6 +60,8 @@ class NoteUpdateSchema(BaseModel):
 
 
 def create_user_router(
+    get_one_note_use_case: GetOneNoteByIdUseCase,
+    get_all_notes_use_case: GetAllNotesUseCase,
     create_note_use_case: CreateNoteUseCase,
     delete_note_use_case: DeleteNoteUseCase,
     update_note_use_case: UpdateNoteUseCase,
@@ -384,4 +388,30 @@ def create_user_router(
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
         
+    @router.get("/note/{note_id}", status_code=status.HTTP_200_OK)
+    async def get_one_note(note_id: int):
+        try:
+            return await get_one_note_use_case.execute(note_id=note_id)
+        except Exception:
+            raise HTTPException(status_code=500, detail="Ошибка получения корзины")
+
+    @router.get("/notes", status_code=status.HTTP_200_OK)
+    async def get_notes(last_id: int | None = None, limit: int = 30):
+        """Получение списка заметок
+
+        Args:
+            last_id (int | None, optional): ID последней записи просмотренной. Defaults to None.
+            limit (int, optional): Количество заметок на странице. Defaults to 30.
+
+        Raises:
+            HTTPException: 500 Internal Server Error, сбой при обращении к бд.
+
+        Returns:
+            list: Список товаров.
+        """
+        try:
+            return await get_all_notes_use_case.execute(last_id=last_id, limit=limit)
+        except Exception:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ошибка загрузки заметок.")
+
     return router
