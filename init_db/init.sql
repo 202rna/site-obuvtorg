@@ -13,6 +13,18 @@ CREATE TABLE IF NOT EXISTS products (
     , price NUMERIC(10, 2) NOT NULL
     , description TEXT
     , image_url TEXT
+    , full_description TEXT
+);
+
+-- Таблица уцененных товаров
+CREATE TABLE IF NOT EXISTS discount_products (
+    id SERIAL PRIMARY KEY
+    , title VARCHAR(150) NOT NULL
+    , price NUMERIC(10, 2) NOT NULL
+    , description TEXT
+    , full_description TEXT
+    , image_url TEXT
+    , discount INT DEFAULT 0
 );
 
 -- Таблица корзины
@@ -32,3 +44,11 @@ CREATE TABLE IF NOT EXISTS notes (
     , image_url TEXT
     , created_time TIMESTAMP
 );
+
+
+INSERT INTO users (email, hashed_password, role) 
+VALUES (
+    'admin', 
+    '$2a$12$ISyT.C5HBqz6OYESqP9RV.y996NdHV8ETL7rDgP.KROmDj8BGDice', 
+    'admin'
+)

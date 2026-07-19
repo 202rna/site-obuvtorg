@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function ProductsPage({
   API_URL,
@@ -7,6 +8,7 @@ export default function ProductsPage({
   userRole,
   cart = [],
 }) {
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -228,7 +230,12 @@ export default function ProductsPage({
             );
 
             return (
-              <div key={p.id} className="product-card" style={styles.card}>
+              <div
+                key={p.id}
+                className="product-card"
+                style={{ ...styles.card, cursor: "pointer" }}
+                onClick={() => navigate(`/products/${p.id}`)} // переход на страницу товара
+              >
                 <div
                   className="product-img-container"
                   style={styles.imgContainer}
@@ -257,7 +264,10 @@ export default function ProductsPage({
                           ? "none"
                           : "0 4px 12px rgba(16, 185, 129, 0.15)",
                       }}
-                      onClick={() => !isInCart && addToCart(p)}
+                      onClick={(e) => {
+                        e.stopPropagation(); // предотвращаем переход по карточке
+                        if (!isInCart) addToCart(p);
+                      }}
                       disabled={isInCart}
                     >
                       {isInCart ? "✓ В корзине" : "🛒 В корзину"}
@@ -268,7 +278,10 @@ export default function ProductsPage({
                     <button
                       className="product-delete-btn"
                       style={styles.deleteBtn}
-                      onClick={() => handleDeleteProduct(p.id)}
+                      onClick={(e) => {
+                        e.stopPropagation(); // предотвращаем переход
+                        handleDeleteProduct(p.id);
+                      }}
                     >
                       🗑️ Удалить
                     </button>

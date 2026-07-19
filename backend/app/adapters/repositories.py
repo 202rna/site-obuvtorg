@@ -122,29 +122,30 @@ class PostgresProductRepository(ProductRepositoryPort):
                     })
                 return products
 
-    async def save(self, title: str, price: float, description: str, image_url: str) -> dict:
-        """Сохранение в БД товара конкретного.
+    async def save(self, title: str, price: float, description: str, image_url: str, full_description: str | None = None) -> dict:
+        """Сохранение в БД товара.
 
         Args:
             title (str): Название.
             price (float): Цена.
             description (str): Описание (короткое).
             image_url (str): Адрес изображения.
+            full_description (str): Подробное описание.
         """
         async with self.pool.connection() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(
                     """
-                    INSERT INTO products (title, price, description, image_url)
-                    VALUES (%s, %s, %s, %s)
-                    RETURNING id, title, price, description, image_url
+                    INSERT INTO products (title, price, description, image_url, full_description)
+                    VALUES (%s, %s, %s, %s, %s)
+                    RETURNING id, title, price, description, image_url, full_description
                     """,
-                    (title, price, description, image_url)
+                    (title, price, description, image_url, full_description)
                 )
                 row = await cur.fetchone()
                 if not row:
                     raise RuntimeError("Не удалось сохранить товар")
-                return {"id": row[0], "title": row[1], "price": float(row[2]), "description": row[3], "image_url": row[4]}
+                return {"id": row[0], "title": row[1], "price": float(row[2]), "description": row[3], "image_url": row[4], "full_description": row[5]}
     
     async def delete(self, product_id: int) -> str | None:
         """Удаление конкретного товара по ID из БД таблицы products.
@@ -162,9 +163,42 @@ class PostgresProductRepository(ProductRepositoryPort):
                 if row:
                     return row[0]  
                 return None
+    
+    async def get_by_id(self, product_id: int) -> dict | None:
+        async with self.pool.connection() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("""
+                                  SELECT id, title, price, description, image_url, full_description
+                                  FROM products
+                                  WHERE id = %s
+                                  """,
+                                  (product_id,)
+                                )
+                row = await cur.fetchone()
+                return row if row is not None else None
 
-
-
+    async def move_to_discounted(self, product_id: int, new_price: int) -> bool:
+        async with self.pool.connection() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    """
+                    WITH deleted_products AS (
+                    DELETE FROM products
+                    WHERE id=%s
+                    RETURNING id, title, price, description, image_url
+                    )
+                    INSRT INTO discount_products (id, title, price, description, full_description, image_url, discount)
+                        VALUES (id, title, price, description, full_description, image_url, discount)
+                    SELECT 
+                        id, title, price, description, NULL AS full_description, image_url, %s as discount
+                    FROM deleted_products
+                    RETURNING id;
+                    """,
+                    (product_id, new_price)
+                )
+                row = await cur.fetchone()
+                return row is not None
+            
 class PostgresCartRepository(CartRepositoryPort):
     """Реализует добавление товара в корзину пользователя.
 

@@ -4,7 +4,8 @@ export default function AdminPage({ API_URL, token }) {
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
-  const [file, setFile] = useState(null); 
+  const [fullDescription, setFullDescription] = useState(""); // <-- новое поле
+  const [file, setFile] = useState(null);
   const [msg, setMsg] = useState({ text: "", isError: false });
 
   async function handleAddProduct(e) {
@@ -19,18 +20,17 @@ export default function AdminPage({ API_URL, token }) {
       return;
     }
 
-    
     const formData = new FormData();
     formData.append("title", title);
     formData.append("price", price);
     formData.append("description", description);
-    formData.append("file", file); 
+    formData.append("full_description", fullDescription || ""); // <-- добавляем
+    formData.append("file", file);
 
     try {
       const response = await fetch(`${API_URL}/products`, {
         method: "POST",
         headers: {
-          
           Authorization: `Bearer ${token}`,
         },
         body: formData,
@@ -39,19 +39,20 @@ export default function AdminPage({ API_URL, token }) {
 
       if (response.ok) {
         setMsg({
-          text: `Товар "${data.title}" успешно создан, фото загружено на сервер!`,
+          text: `Товар "${data.title}" успешно создан!`,
           isError: false,
         });
         setTitle("");
         setPrice("");
         setDescription("");
+        setFullDescription(""); // <-- очищаем
         setFile(null);
-        document.getElementById("fileInput").value = ""; 
+        document.getElementById("fileInput").value = "";
       } else {
         setMsg({ text: data.detail || "Ошибка добавления", isError: true });
       }
     } catch {
-      setMsg({ text: "Ошибка", isError: true });
+      setMsg({ text: "Ошибка сети", isError: true });
     }
   }
 
@@ -61,7 +62,7 @@ export default function AdminPage({ API_URL, token }) {
       padding: "30px",
       borderRadius: "16px",
       boxShadow: "0 4px 12px rgba(0,0,0,0.03)",
-      maxWidth: "500px",
+      maxWidth: "600px",
       margin: "50px auto",
       fontFamily: "sans-serif",
     },
@@ -74,6 +75,20 @@ export default function AdminPage({ API_URL, token }) {
       boxSizing: "border-box",
       marginBottom: "15px",
       outline: "none",
+      fontFamily: "inherit",
+    },
+    textarea: {
+      width: "100%",
+      padding: "12px",
+      fontSize: "15px",
+      borderRadius: "8px",
+      border: "1px solid #d9dce1",
+      boxSizing: "border-box",
+      marginBottom: "15px",
+      outline: "none",
+      fontFamily: "monospace",
+      minHeight: "150px",
+      resize: "vertical",
     },
     fileLabel: {
       display: "block",
@@ -94,6 +109,13 @@ export default function AdminPage({ API_URL, token }) {
       borderRadius: "8px",
       cursor: "pointer",
       marginTop: "10px",
+    },
+    hint: {
+      fontSize: "12px",
+      color: "#697386",
+      marginTop: "-10px",
+      marginBottom: "15px",
+      textAlign: "left",
     },
   };
 
@@ -127,6 +149,7 @@ export default function AdminPage({ API_URL, token }) {
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Название товара"
         />
+
         <input
           type="number"
           style={styles.input}
@@ -134,22 +157,37 @@ export default function AdminPage({ API_URL, token }) {
           onChange={(e) => setPrice(e.target.value)}
           placeholder="Цена (в рублях)"
         />
+
         <input
           type="text"
           style={styles.input}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Описание товара"
+          placeholder="Краткое описание товара"
         />
 
-        {/* Поле выбора файла с компьютера */}
+        {/* Подробное описание с подсказкой по Markdown */}
+        <label style={{ ...styles.fileLabel, marginTop: "10px" }}>
+          Подробное описание товара
+        </label>
+        <textarea
+          style={styles.textarea}
+          value={fullDescription}
+          onChange={(e) => setFullDescription(e.target.value)}
+          placeholder="Подробное описание товара. Поддерживается Markdown: 
+# Заголовок, **жирный**, *курсив*, - список"
+        />
+        <div style={styles.hint}>
+          💡 Поддерживается Markdown: # Заголовок, **жирный**, *курсив*, -
+          список
+        </div>
+
         <label style={styles.fileLabel}>Фото товара (Изображение)</label>
         <input
           id="fileInput"
           type="file"
           accept="image/*"
           style={{ ...styles.input, padding: "8px" }}
-          
           onChange={(e) => setFile(e.target.files[0])}
         />
 

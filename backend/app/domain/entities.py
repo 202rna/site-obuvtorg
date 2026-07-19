@@ -20,6 +20,7 @@ class Order:
     title: str = ""
     price: float = 0.0
     description: str = ""
+    full_description: Optional[str] = None
     image_url: str = ""
 
 

@@ -51,14 +51,14 @@ class TokenProviderPort(ABC):
 
 
 class ProductRepositoryPort(ABC):
-    """Интерфейс для управления сущностями товаров"""
+    """Интерфейс для управления товарами"""
     @abstractmethod
     async def get_all(self, last_id: int | None, limit: int) -> list:
         """Получение товаров по курсору."""
         pass
 
     @abstractmethod
-    async def save(self, title: str, price: float, description: str, image_url: str) -> dict:
+    async def save(self, title: str, price: float, description: str, image_url: str, full_description: str | None) -> dict:
         """Сохранить новый товар в базу данных."""
         pass
 
@@ -66,8 +66,16 @@ class ProductRepositoryPort(ABC):
     async def delete(self, product_id: int) -> str | None:
         """Удалить товар из БД и вернуть URL его картинки."""
         pass
+    
+    @abstractmethod
+    async def move_to_discounted(self, product_id: int, new_price: int) -> bool:
+        pass
+    
+    @abstractmethod
+    async def get_by_id(self, product_id: int) -> dict | None:
+        pass
 
-
+    
 class CartRepositoryPort(ABC):
     """Интерфейс управления корзиной в базе данных."""
     @abstractmethod

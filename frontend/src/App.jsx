@@ -10,6 +10,7 @@ import AdminPage from "./pages/AdminPage.jsx";
 import AdminNotesPage from "./pages/AdminNotePage.jsx";
 import UserNotesPage from "./pages/UserNotesPage.jsx";
 import NoteDetailPage from "./pages/NoteDetailPage.jsx";
+import ProductPage from "./pages/ProductPage";
 
 export default function App() {
   const API_URL = "/api";
@@ -129,7 +130,17 @@ export default function App() {
           path="/note/:id"
           element={<NoteDetailPage API_URL={API_URL} />}
         />
-
+        <Route
+          path="/products/:productId"
+          element={
+            <ProductPage
+              API_URL={API_URL}
+              addToCart={addToCart}
+              token={token}
+              cart={cart}
+            />
+          }
+        />
         <Route
           path="/login"
           element={

@@ -20,6 +20,7 @@ from app.domain.usecases.users.get_profile_use_case import GetProfileUseCase
 from app.domain.usecases.product.get_products_use_case import GetProductsUseCase  
 from app.domain.usecases.product.add_product_use_case import AddProductUseCase
 from app.domain.usecases.product.delete_product_use_case import DeleteProductUseCase
+from app.domain.usecases.product.get_product_by_id_use_case import GetProductByIdUseCase
 
 from app.domain.usecases.cart.add_to_cart_use_case import AddToCartUseCase
 from app.domain.usecases.cart.get_cart_use_case import GetCartUseCase
@@ -60,6 +61,7 @@ class NoteUpdateSchema(BaseModel):
 
 
 def create_user_router(
+    get_product_by_id_use_case: GetProductByIdUseCase,
     get_one_note_use_case: GetOneNoteByIdUseCase,
     get_all_notes_use_case: GetAllNotesUseCase,
     create_note_use_case: CreateNoteUseCase,
@@ -166,13 +168,36 @@ def create_user_router(
         except Exception:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ошибка загрузки товаров")
 
+    @router.get("/products/{product_id}", status_code=status.HTTP_200_OK)
+    async def get_product_by_id(product_id: int):
+        if product_id <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="ID товара должен быть положительным числом"
+            )
+        try:
+            product = await get_product_by_id_use_case.execute(product_id=product_id)
+        except Exception as e:
+            print(f"Ошибка при получении товара: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Внутренняя ошибка сервера"
+            )
+        if product is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Товар с указанным ID не найден"
+            )
+        return product
+    
     @router.post("/products", status_code=status.HTTP_201_CREATED)
     async def add_product(
         title: str = Form(...),
         price: float = Form(...),
         description: str = Form(...),
         file: UploadFile = File(...),
-        current_user: User = Depends(get_current_user)
+        current_user: User = Depends(get_current_user),
+        full_description: str = Form(None)
     ):
         """Принимает описание товара от пользователя. Регирует товар в бд и 
         сохраняет его в локальное статическое хранинилище
@@ -198,13 +223,9 @@ def create_user_router(
             upload_dir = os.path.join("app", "static", "uploads")
             os.makedirs(upload_dir, exist_ok=True)
             file_path = os.path.join(upload_dir, unique_filename)
-    
             with open(file_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
-            
-            #base_server_url = "http://127.0.0.1:8000"
             static_folder_path = "/static/uploads/"
-            #image_url = base_server_url + static_folder_path + unique_filename
             image_url = static_folder_path + unique_filename
             
             new_product = await add_product_use_case.execute(
@@ -212,7 +233,8 @@ def create_user_router(
                 title=title,
                 price=float(price),
                 description=description,
-                image_url=image_url
+                image_url=image_url,
+                full_description=full_description
             )
             return new_product
 
@@ -221,6 +243,7 @@ def create_user_router(
         except Exception as e:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ошибка загрузки файла")
 
+    
     @router.get("/cart", status_code=status.HTTP_200_OK)
     async def get_cart(current_user: User = Depends(get_current_user)):
         """Получение списка товаров в конзине пользователя.
