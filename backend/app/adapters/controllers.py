@@ -371,7 +371,7 @@ def create_user_router(
             raise HTTPException(status_code=403, detail=str(e))
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
-        
+
     @router.patch("/note/{note_id}", status_code=status.HTTP_200_OK)
     async def update_note(note_id: int, data: NoteUpdateSchema, current_user: User = Depends(get_current_user)):
         try:

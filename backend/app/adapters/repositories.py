@@ -340,7 +340,7 @@ class PostgresNoteRepository(NoteRepositoryPort):
                 async with conn.cursor() as cur:
                     if last_id is None:
                         await cur.execute(
-                            "SELECT id, title, description, image_url, created_time FROM notes ORDER BY id ASC LIMIT %s",
+                            "SELECT id, title, description, image_url, created_time FROM notes ORDER BY id DESC LIMIT %s",
                             (limit,)
                         )
                     else:
@@ -349,7 +349,7 @@ class PostgresNoteRepository(NoteRepositoryPort):
                             SELECT id, title, description, image_url, created_time
                             FROM notes
                             WHERE id > %s
-                            ORDER BY id ASC
+                            ORDER BY id DESC
                             LIMIT %s
                             """,
                             (last_id, limit)

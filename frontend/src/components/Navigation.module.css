@@ -1,31 +1,34 @@
-/* Navigation.module.css */
-
 .nav {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
   background-color: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
   width: 100%;
-  padding: 16px 24px;
+  padding: 12px 24px;
   border-bottom: 1px solid rgba(226, 232, 240, 0.8);
   margin-bottom: 40px;
-  gap: 16px;
+  gap: 8px;
   font-family:
     system-ui,
     -apple-system,
     sans-serif;
   box-sizing: border-box;
   max-width: 100%;
-  overflow: hidden; /* предотвращает вылезание за пределы */
+  overflow: hidden;
+}
+
+.topRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
 }
 
 .brandBlock {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-shrink: 0; /* не сжимается, но при необходимости переносится */
-  flex-wrap: wrap; /* разрешает перенос содержимого внутри */
+  flex-wrap: wrap;
 }
 
 .logo {
@@ -34,7 +37,7 @@
   color: #4f46e5;
   text-decoration: none;
   letter-spacing: -0.5px;
-  white-space: nowrap; /* логотип не разбивается */
+  white-space: nowrap;
 }
 
 .contacts {
@@ -44,8 +47,8 @@
   color: #64748b;
   border-left: 1px solid #e2e8f0;
   padding-left: 12px;
-  white-space: normal; /* разрешаем перенос адреса */
-  min-width: 0; /* помогает при переносе */
+  white-space: normal;
+  word-break: break-word;
 }
 
 .phone {
@@ -53,15 +56,22 @@
   color: #0f172a;
   text-decoration: none;
   margin-bottom: 2px;
-  white-space: nowrap; /* телефон не разбиваем */
+  white-space: nowrap;
+}
+
+.bottomRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .links {
   display: flex;
-  gap: 24px;
-  align-items: center;
   flex-wrap: wrap;
-  flex: 0 1 auto; /* не растягивается, занимает только нужное место */
+  align-items: center;
+  gap: 20px;
 }
 
 .link {
@@ -69,7 +79,12 @@
   color: #4b5563;
   font-weight: 500;
   font-size: 15px;
-  white-space: nowrap; /* ссылки не разбиваются */
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+
+.link:hover {
+  color: #4f46e5;
 }
 
 .activeLink {
@@ -80,35 +95,22 @@
   white-space: nowrap;
 }
 
-.rightBlock {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-shrink: 0; /* не сжимается */
-}
-
-.btnOut {
-  padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #4f46e5;
-  background-color: #f5f3ff;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.btnIn {
+.newsLink {
   text-decoration: none;
-  background-color: #4f46e5;
-  color: #ffffff;
-  padding: 10px 20px;
-  border-radius: 10px;
-  font-size: 14px;
+  color: #4f46e5;
   font-weight: 600;
-  display: inline-block;
+  font-size: 15px;
   white-space: nowrap;
+  padding: 4px 14px;
+  border: 2px solid #4f46e5;
+  border-radius: 20px;
+  background-color: #f5f3ff;
+  transition: all 0.2s;
+}
+
+.newsLink:hover {
+  background-color: #4f46e5;
+  color: white;
 }
 
 .badge {
@@ -121,22 +123,64 @@
   font-weight: 600;
 }
 
-/* Стиль для админских ссылок (убираем левую границу на мобильных) */
-.adminLink {
-  border-left: none !important;
-  padding-left: 0 !important;
+/* Кнопка входа/выхода */
+.rightBlock {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
-/* ===== Мобильные стили (≤ 768px) ===== */
+.btnOut {
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #4f46e5;
+  background-color: #f5f3ff;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.btnOut:hover {
+  background-color: #e0e7ff;
+}
+
+.btnIn {
+  text-decoration: none;
+  background-color: #4f46e5;
+  color: #ffffff;
+  padding: 8px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-block;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.btnIn:hover {
+  background-color: #4338ca;
+}
+
+/* Админские ссылки */
+.adminLink {
+  color: #ef4444 !important;
+  font-weight: 600 !important;
+}
+
+/* Мобильные стили (≤ 768px) */
 @media (max-width: 768px) {
   .nav {
-    padding: 12px 16px;
-    gap: 8px;
+    padding: 10px 16px;
+    gap: 6px;
   }
 
-  .brandBlock {
-    gap: 8px;
-    flex-wrap: wrap; /* разрешаем перенос логотипа и контактов */
+  .topRow {
+    gap: 8px 12px;
   }
 
   .logo {
@@ -146,11 +190,15 @@
   .contacts {
     font-size: 10px;
     padding-left: 8px;
-    border-left: 1px solid #e2e8f0; /* оставляем границу */
   }
 
   .phone {
     font-size: 12px;
+  }
+
+  .bottomRow {
+    gap: 8px;
+    flex-wrap: wrap;
   }
 
   .links {
@@ -158,20 +206,25 @@
   }
 
   .link,
-  .activeLink {
-    font-size: 16px;
+  .activeLink,
+  .newsLink {
+    font-size: 14px;
     padding: 4px 0;
   }
 
+  .newsLink {
+    padding: 4px 12px;
+  }
+
   .rightBlock {
-    gap: 8px;
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-end;
   }
 
   .btnOut,
   .btnIn {
-    padding: 6px 14px;
+    padding: 6px 16px;
     font-size: 13px;
   }
-
-  /* Админские ссылки на мобильных получают класс .adminLink, который убирает границу */
 }
