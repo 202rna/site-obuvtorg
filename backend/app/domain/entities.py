@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional
+from datetime import datetime
 
 
 @dataclass
@@ -24,9 +25,9 @@ class Order:
 
 @dataclass
 class Note:
-    """Сущность заметки
-    """
+    """Сущность заметки"""
     id: Optional[int] = None
     title: str = ""
     description: str = ""
     image_url: Optional[str] = None
+    created_time: Optional[datetime] = None

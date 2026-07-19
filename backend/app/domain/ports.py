@@ -47,6 +47,7 @@ class TokenProviderPort(ABC):
         """
         pass
 
+
     
 class ProductRepositoryPort(ABC):
     """Интерфейс для управления сущностями товаров"""
@@ -84,6 +85,12 @@ class CartRepositoryPort(ABC):
         pass
 
 
+class MissingType:
+    """Класс заглушка отличать или полу стерли, или не передали вовсе.
+    """
+    pass
+
+
 class NoteRepositoryPort(ABC):
     @abstractmethod
     async def add(self, title: str, description: str, image_url: str | None = None) -> bool:
@@ -96,6 +103,12 @@ class NoteRepositoryPort(ABC):
         pass
     
     @abstractmethod
-    async def update(self, note_id: int, title: str | None = None, description: str | None = None, image_url: str | None = None) -> str | None | bool:
+    async def update(
+        self, 
+        note_id: int, 
+        title: str | MissingType = MissingType(), 
+        description: str | MissingType = MissingType(), 
+        image_url: str | None | MissingType = MissingType()
+        ) -> str | None | bool:
         """Изменение названия/содержимого/фотографии заметки"""
         pass

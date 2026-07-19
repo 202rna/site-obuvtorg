@@ -368,7 +368,9 @@ def create_user_router(
         try:
             update_data = data.model_dump(exclude_unset=True)
             if not update_data:
-                return {"massage": "no data for updating."}
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
             success = await update_note_use_case.execute(user_role=current_user.role, id=note_id, field_to_update=update_data)
             if not success:
                 raise HTTPException(

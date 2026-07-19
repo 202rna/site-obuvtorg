@@ -24,10 +24,11 @@ CREATE TABLE IF NOT EXISTS cart_items (
     , CONSTRAINT unique_user_product UNIQUE (user_id, product_id)
 );
 
--- Таблица новостей
+-- Таблица заметок
 CREATE TABLE IF NOT EXISTS notes (
     id SERIAL PRIMARY KEY
     , title VARCHAR(150) NOT NULL
     , description TEXT NOT NULL
     , image_url TEXT
+    , created_time TIMESTAMP
 );

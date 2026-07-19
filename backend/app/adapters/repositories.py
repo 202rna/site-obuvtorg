@@ -2,7 +2,7 @@ from typing import Any, List
 from psycopg_pool import AsyncConnectionPool
 from app.domain.ports import UserRepositoryPort, ProductRepositoryPort, CartRepositoryPort, NoteRepositoryPort
 from app.domain.entities import User
-
+from app.domain.ports import MissingType
 
 class PostgresUserRepository(UserRepositoryPort):
     """Репозиторий для управления данными пользователей в PostgreSQL
@@ -217,10 +217,6 @@ class PostgresCartRepository(CartRepositoryPort):
                 await cur.execute("DELETE FROM cart_items WHERE user_id = %s", (user_id,))
 
 
-class MissingType:
-    """Класс заглушка отличать или полу стерли, или не передали вовсе.
-    """
-    pass
 
 
 Missing = MissingType()
@@ -265,21 +261,41 @@ class PostgresNoteRepository(NoteRepositoryPort):
             return False
     
     async def update(
-        self, 
+        self,
         note_id: int, 
-        title: str | None | MissingType = Missing, 
-        description: str | None | MissingType = Missing, 
+        title: str | MissingType = Missing, 
+        description: str | MissingType = Missing, 
         image_url: str | None | MissingType = Missing
     ) -> str | None | bool:
+        """Обновление таблицы notes тех записей которые были переданы в виде словаря.
+        В словаре только поля и записи которые изменились. None означает не отсутствие поля
+        а то что его занулили/начистили. Могут изменить описание и изображение удалить. image_url 
+        будет None и нужно его в БД убрать. Остальные поля Missing значения примут.
+
+        Args:
+            note_id (int): Идентификатор записи.
+            title (str | MissingType, optional): Заголовок. Defaults to Missing.
+            description (str | MissingType, optional): Описание. Defaults to Missing.
+            image_url (str | None | MissingType, optional): Адрес изображения. Defaults to Missing.
+
+        Returns:
+            str | None | bool: Если str - то это адрес старого изображения чтобы удалить его из БД.
+            None - если запись корректна изменена но изображения старого не было. True - 
+            все поля успешно изменены. False - где-то ошибка или что то недопустипое.
+        """        
         try:
             update_fields = list()
             query_args = list()
             
             if title is not Missing:
+                if title is None:
+                    return False
                 update_fields.append("title = %s")
                 query_args.append(title)
             
             if description is not Missing:
+                if description is None:
+                    return False
                 update_fields.append("description = %s")
                 query_args.append(description)
             
@@ -307,5 +323,3 @@ class PostgresNoteRepository(NoteRepositoryPort):
                     return row[0]   # Или строчку или None если поле в БД равно Null
         except Exception:
             return False
-
-    async def get()
