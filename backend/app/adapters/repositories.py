@@ -271,6 +271,7 @@ class PostgresNoteRepository(NoteRepositoryPort):
                         """,
                         (title, description, image_url, created_time)
                     )
+                    await conn.commit() 
                     return True
         except Exception:
             return False

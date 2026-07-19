@@ -10,4 +10,9 @@ class CreateNoteUseCase:
         if user_role != "admin":
             raise PermissionError("Доступно только администратору.")
         current_time = datetime.now(timezone.utc)
-        return await self.note_repo.add(current_time, title, description, image_url)
+        return await self.note_repo.add(
+            created_time=current_time, 
+            title=title, 
+            description=description, 
+            image_url=image_url
+        )

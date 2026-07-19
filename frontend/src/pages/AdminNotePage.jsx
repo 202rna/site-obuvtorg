@@ -8,7 +8,6 @@ export default function AdminNotesPage({ API_URL, token }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  // ID заметки, которую сейчас правим (если null — режим создания)
   const [editingId, setEditingId] = useState(null);
 
   async function fetchNotes() {
@@ -22,34 +21,25 @@ export default function AdminNotesPage({ API_URL, token }) {
   }
 
   useEffect(() => {
-    async function loadData() {
-      await fetchNotes();
-    }
-    loadData();
-
-    // Добавляем зависимости, чтобы эффект знал, когда перезапускаться, и не уходил в бесконечный цикл
+    fetchNotes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [API_URL, token]);
+  }, [API_URL]);
 
-  // Главная функция отправки формы
   async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
     setMessage("");
 
     if (editingId) {
-      // --- РЕЖИМ PATCH ОБНОВЛЕНИЯ (Передаем JSON по твоей NoteUpdateSchema) ---
+      // --- Режим редактирования (PATCH) ---
       try {
-        // ПРОВЕРЬ И ИСПРАВЬ ЭТУ СТРОКУ В AdminNotesPage.jsx:
-        // Убедись, что перед note стоит косая черта, а после нее идет ID без лишних знаков
-        // ИСПРАВЛЕНО: Перед note обязательно должен быть слэш, и перед ${editingId} тоже!
         const response = await fetch(`${API_URL}/note/${editingId}`, {
           method: "PATCH",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ title, description }), // Отправляем ровно те поля, что ждут в NoteUpdateSchema
+          body: JSON.stringify({ title, description }),
         });
 
         const data = await response.json();
@@ -68,40 +58,46 @@ export default function AdminNotesPage({ API_URL, token }) {
         setLoading(false);
       }
     } else {
-      //   // --- РЕЖИМ POST СОЗДАНИЯ (Передаем Form-Data с вложенным файлом) ---
-      //   if (!file) {
-      //     setMessage("❌ Пожалуйста, выберите файл!");
-      //     setLoading(false);
-      //     return;
-      //   }
+      // --- Режим создания (POST) — файл НЕОБЯЗАТЕЛЕН ---
       const formData = new FormData();
       formData.append("title", title);
       formData.append("description", description);
-      if (file && file[0]) {
-        formData.append("file", file[0]);
+      if (file) {
+        formData.append("file", file);
       }
 
       try {
         const response = await fetch(`${API_URL}/note`, {
           method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
           body: formData,
         });
+
+        const data = await response.json();
+
         if (response.ok) {
           setMessage("✅ Заметка успешно создана!");
           setTitle("");
           setDescription("");
           setFile(null);
-          if (document.getElementById("adminNoteFile"))
-            document.getElementById("adminNoteFile").value = "";
+          const fileInput = document.getElementById("adminNoteFile");
+          if (fileInput) fileInput.value = "";
           fetchNotes();
         } else {
-          const errData = await response.json();
-          setMessage(
-            `❌ Ошибка: ${errData.detail || "Не удалось создать заметку"}`,
-          );
+          if (response.status === 422) {
+            const errors = data.detail
+              .map((err) => `${err.loc[1]}: ${err.msg}`)
+              .join(", ");
+            setMessage(`❌ Ошибка валидации: ${errors}`);
+          } else {
+            setMessage(
+              `❌ Ошибка: ${data.detail || "Не удалось создать заметку"}`,
+            );
+          }
         }
-      } catch {
+      } catch (err) {
         setMessage("❌ Ошибка соединения при создании");
       } finally {
         setLoading(false);
@@ -109,21 +105,18 @@ export default function AdminNotesPage({ API_URL, token }) {
     }
   }
 
-  // Переключение формы в режим редактирования
   function startEdit(note) {
     setEditingId(note.id);
     setTitle(note.title);
     setDescription(note.description);
   }
 
-  // Выход из режима редактирования
   function cancelEdit() {
     setEditingId(null);
     setTitle("");
     setDescription("");
   }
 
-  // ДЕЙСТВИЕ: Удаление заметки (DELETE)
   async function handleDelete(id) {
     if (!window.confirm("Вы уверены, что хотите навсегда удалить эту заметку?"))
       return;
@@ -143,6 +136,7 @@ export default function AdminNotesPage({ API_URL, token }) {
     }
   }
 
+  // Стили (без изменений)
   const styles = {
     container: {
       width: "100%",
@@ -212,7 +206,7 @@ export default function AdminNotesPage({ API_URL, token }) {
   return (
     <div style={styles.container}>
       <h2 style={{ color: "#0f172a", fontSize: "26px", fontWeight: "800" }}>
-        Панель управления заметками 📄
+        Панель управления публикациями 📰
       </h2>
       {message && (
         <div
@@ -230,12 +224,10 @@ export default function AdminNotesPage({ API_URL, token }) {
       )}
 
       <div style={styles.wrapper}>
-        {/* ФОРМА СОЗДАНИЯ / PATCH ОБНОВЛЕНИЯ */}
+        {/* Форма */}
         <div style={styles.card}>
           <h3 style={{ margin: "0 0 20px 0", fontWeight: "700" }}>
-            {editingId
-              ? "📝 Редактировать публикацию"
-              : "🚀 Создать новую заметку"}
+            {editingId ? "📝 Редактировать публикацию" : "🗞 Создать новость"}
           </h3>
           <form onSubmit={handleSubmit}>
             <label style={styles.label}>Название</label>
@@ -253,15 +245,14 @@ export default function AdminNotesPage({ API_URL, token }) {
               style={{ ...styles.input, height: "140px", resize: "vertical" }}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Введите текст или аннотацию к файлу"
+              placeholder="Введите текст"
               required
             />
 
-            {/* При PATCH обновлении поле файла скрывается, так как мы обновляем только текстовые поля в схеме */}
             {!editingId && (
               <>
                 <label style={styles.label}>
-                  Прикрепить файл (Документ, Ноты, Картинка)
+                  Прикрепить изображение (необязательно)
                 </label>
                 <input
                   id="adminNoteFile"
@@ -283,8 +274,8 @@ export default function AdminNotesPage({ API_URL, token }) {
               {loading
                 ? "Обработка запроса..."
                 : editingId
-                  ? "Сохранить изменения (PATCH)"
-                  : "Опубликовать заметку (POST)"}
+                  ? "Сохранить изменения"
+                  : "Опубликовать новость"}
             </button>
             {editingId && (
               <button
@@ -302,10 +293,10 @@ export default function AdminNotesPage({ API_URL, token }) {
           </form>
         </div>
 
-        {/* СПИСОК ПУБЛИКАЦИЙ АДМИНА */}
+        {/* Список публикаций */}
         <div style={styles.card}>
           <h3 style={{ margin: "0 0 20px 0", fontWeight: "700" }}>
-            Все публикации (Только заголовки)
+            Все публикации:
           </h3>
           {notes.length === 0 ? (
             <p style={{ color: "#64748b", fontStyle: "italic" }}>
