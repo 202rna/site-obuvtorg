@@ -19,7 +19,7 @@ services:
       - app_network
 
   backend:
-    build: ./backend
+    image: 2136rna/my-backend:latest
     container_name: clean_app_backend
     restart: always
     environment:
@@ -40,20 +40,19 @@ services:
       - app_network
 
   frontend:
-    build: ./frontend
+    image: 2136rna/my-frontend:latest
     container_name: clean_app_frontend
     restart: always
     ports:
       - "80:80"
-      - "443:443"
+      - "443:443" # (для работы HTTPS)
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro # (проброс сертификатов)
+      - ./test_nginx.conf:/etc/nginx/test_nginx.conf # конфиг лежит локально на сервере, а не внутри образа
     depends_on:
       - backend
     networks:
       - app_network
-    volumes:
-      - /etc/letsencrypt:/etc/letsencrypt:ro
-      - /var/www/html:/var/www/html:ro
-      - ./test_nginx.conf:/etc/nginx/conf.d/default.conf
 
 volumes:
   pg_data:
