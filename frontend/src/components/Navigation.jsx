@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 import styles from "./Navigation.module.css";
+// Импортируем изображение. Убедитесь, что файл logo-no-bg.png лежит в папке src/assets/
+import logoImg from "../assets/logo-no-bg.png";
 
 export default function Navigation({
   token,
@@ -12,16 +14,48 @@ export default function Navigation({
       {/* Верхняя строка: логотип + контакты */}
       <div className={styles.topRow}>
         <div className={styles.brandBlock}>
+          {/* Адаптивный логотип с функцией clamp */}
           <Link to="/" className={styles.logo}>
-            ООО ФИРМА "ОБУВЬТОРГ"
+            <img
+              src={logoImg}
+              alt="ООО ФИРМА ОБУВЬТОРГ"
+              style={{
+                display: "block",
+                width: "clamp(100px, 20vw, 180px)",
+                height: "auto",
+                maxHeight: "clamp(100px, 12vh, 140px)",
+                objectFit: "contain",
+              }}
+            />
           </Link>
           <div className={styles.contacts}>
-            <a href="tel:+79991234567" className={styles.phone}>
-              +7 (999) 123-45-67
+            {/* Изящный, уменьшенный призыв к действию */}
+            <span
+              style={{
+                fontSize: "0.75rem", // Уменьшенный размер
+                color: "#777777", // Мягкий серый цвет
+                letterSpacing: "0.05em", // Элегантный разряд между буквами
+                fontVariant: "small-caps", // Стильные мини-капители
+                fontWeight: "500", // Небольшая плотность
+                marginBottom: "1px",
+              }}
+            >
+              для заказа и консультации:
+            </span>
+
+            <a href="tel:+74852214755" className={styles.phone}>
+              📞 +7 (4852) 21-47-55
             </a>
+
             <span>
               150049, Ярославская область, г. Ярославль, ул. Вспольинское Поле,
               д. 18
+            </span>
+
+            <span
+              style={{ fontSize: "0.85rem", color: "#888", marginTop: "2px" }}
+            >
+              🕒 Вт – пт: 09:00–17:00, сб 09:00–16:00 | Вс.-Пн. выходной
             </span>
           </div>
         </div>
