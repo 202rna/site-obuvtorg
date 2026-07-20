@@ -308,9 +308,7 @@ export default function ProductsPage({
                 fontStyle: "italic",
                 marginTop: "40px",
               }}
-            >
-              Вы посмотрели все доступные товары 🎉
-            </p>
+            ></p>
           )}
         </div>
       </div>

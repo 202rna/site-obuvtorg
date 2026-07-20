@@ -158,9 +158,7 @@ export default function UserNotesPage({ API_URL }) {
                 fontStyle: "italic",
                 marginTop: "40px",
               }}
-            >
-              Вы посмотрели все доступные заметки 🎉
-            </p>
+            ></p>
           )}
         </div>
       </div>
