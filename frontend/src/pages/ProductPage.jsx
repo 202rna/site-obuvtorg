@@ -1,4 +1,3 @@
-// ProductPage.jsx
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { marked } from "marked";
@@ -70,7 +69,6 @@ const styles = {
     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
     boxShadow: "0 4px 12px rgba(16, 185, 129, 0.15)",
   },
-  // Стиль вспышки в момент успешного добавления
   btnSuccessPulse: {
     backgroundColor: "#059669",
     transform: "scale(1.05)",
@@ -121,7 +119,7 @@ export default function ProductPage({
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isJustAdded, setIsJustAdded] = useState(false); // Временное состояние триггера анимации
+  const [isJustAdded, setIsJustAdded] = useState(false);
   const navigate = useNavigate();
 
   const cartItems = Array.isArray(cart) ? cart : [];
@@ -159,16 +157,34 @@ export default function ProductPage({
     };
   }, [API_URL, productId]);
 
-  const isInCart =
-    product && Array.isArray(product)
-      ? cartItems.some((item) => String(item.id) === String(product[0]))
-      : false;
+  // Извлекаем свойства безопасно, поддерживая и массив, и объект от API
+  const isProductArray = Array.isArray(product);
+  const id = isProductArray ? product[0] : product?.id;
+  const title = isProductArray ? product[1] : product?.title;
+  const price = isProductArray ? product[2] : product?.price;
+  const description = isProductArray ? product[3] : product?.description;
+  const imageUrl = isProductArray
+    ? product[4]
+    : product?.image_url || product?.imageUrl;
+  const fullDescription = isProductArray
+    ? product[5]
+    : product?.full_description || product?.fullDescription;
 
-  async function handleDeleteProduct(id) {
-    if (!window.confirm("Вы уверены, что хотите навсегда удалить этот товар?"))
+  const finalImageUrl = imageUrl || "/placeholder.png";
+
+  // Проверяем наличие в корзине по вычисленному id товара
+  const isInCart = id
+    ? cartItems.some((item) => String(item.id) === String(id))
+    : false;
+
+  async function handleDeleteProduct(targetId) {
+    if (
+      !targetId ||
+      !window.confirm("Вы уверены, что хотите навсегда удалить этот товар?")
+    )
       return;
     try {
-      const response = await fetch(`${API_URL}/products/${id}`, {
+      const response = await fetch(`${API_URL}/products/${targetId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -184,15 +200,12 @@ export default function ProductPage({
     }
   }
 
-  // Функция обработки клика
   const handleAddToCart = (itemData) => {
     if (isInCart) return;
 
-    // Включаем визуальный эффект успеха
     setIsJustAdded(true);
     addToCart(itemData);
 
-    // Выключаем эффект пульсации через 800 миллисекунд
     setTimeout(() => {
       setIsJustAdded(false);
     }, 800);
@@ -208,7 +221,8 @@ export default function ProductPage({
     );
   }
 
-  if (error || !product || !Array.isArray(product)) {
+  // Обновленное условие: проверяем просто наличие объекта товара (а не строго массив)
+  if (error || !product) {
     return (
       <div style={styles.container}>
         <div style={styles.backBtn} onClick={() => navigate(-1)}>
@@ -221,9 +235,7 @@ export default function ProductPage({
     );
   }
 
-  const [id, title, price, description, imageUrl, fullDescription] = product;
-  const finalImageUrl = imageUrl || "/placeholder.png";
-
+  // Настройка marked
   marked.setOptions({
     breaks: true,
     gfm: true,
@@ -231,7 +243,6 @@ export default function ProductPage({
 
   const formattedHtml = fullDescription ? marked.parse(fullDescription) : "";
 
-  // Динамически вычисляем стили для кнопки корзины
   let currentBtnStyle = { ...styles.btn };
   if (isInCart) {
     currentBtnStyle = { ...styles.btn, ...styles.btnDisabled };
@@ -288,7 +299,7 @@ export default function ProductPage({
         </div>
       )}
 
-      <div style={{ marginTop: "30px" }}>
+      <div style={{ marginTop: "30px", display: "flex", gap: "12px" }}>
         {token && (
           <button
             style={currentBtnStyle}
