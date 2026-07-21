@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import styles from "./Navigation.module.css";
-// Импортируем изображение. Убедитесь, что файл logo-no-bg.png лежит в папке src/assets/
 import logoImg from "../assets/logo-no-bg.png";
 
 export default function Navigation({
@@ -14,7 +13,6 @@ export default function Navigation({
       {/* Верхняя строка: логотип + контакты */}
       <div className={styles.topRow}>
         <div className={styles.brandBlock}>
-          {/* Адаптивный логотип с функцией clamp */}
           <Link to="/" className={styles.logo}>
             <img
               src={logoImg}
@@ -29,14 +27,13 @@ export default function Navigation({
             />
           </Link>
           <div className={styles.contacts}>
-            {/* Изящный, уменьшенный призыв к действию */}
             <span
               style={{
-                fontSize: "0.75rem", // Уменьшенный размер
-                color: "#777777", // Мягкий серый цвет
-                letterSpacing: "0.05em", // Элегантный разряд между буквами
-                fontVariant: "small-caps", // Стильные мини-капители
-                fontWeight: "500", // Небольшая плотность
+                fontSize: "0.75rem",
+                color: "#777777",
+                letterSpacing: "0.05em",
+                fontVariant: "small-caps",
+                fontWeight: "500",
                 marginBottom: "1px",
               }}
             >
@@ -69,6 +66,10 @@ export default function Navigation({
           </Link>
           <Link to="/notes" className={styles.newsLink}>
             📄 Новости
+          </Link>
+          {/* Ссылка "Как проехать" добавлена навигатор */}
+          <Link to="/how-to-drive" className={styles.link}>
+            🗺️ Как проехать
           </Link>
           {token && (
             <Link to="/profile" className={styles.link}>

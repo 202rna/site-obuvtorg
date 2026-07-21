@@ -5,16 +5,14 @@ import { marked } from "marked";
 const styles = {
   container: {
     maxWidth: "800px",
-    margin: "0 auto", // Исправлено: убрали жесткий отступ 40px, который выдавливал контент вниз
-    padding: "20px", // Оставили оригинальный паддинг
+    margin: "40px auto",
+    padding: "0 20px",
     fontFamily: "system-ui, -apple-system, sans-serif",
     boxSizing: "border-box",
   },
   imageContainer: {
     width: "100%",
-    height: "auto", // Исправлено: убрали жесткие 400px, чтобы блок не растягивал экран вниз
-    maxHeight: "400px", // Ограничение высоты для десктопа, чтобы картинка не была огромной
-    aspectRatio: "4 / 3", // Пропорция, которая идеально сжимается на любых смартфонах
+    height: "400px",
     backgroundColor: "#ffffff",
     borderRadius: "20px",
     display: "flex",
@@ -67,9 +65,10 @@ const styles = {
     border: "none",
     borderRadius: "12px",
     cursor: "pointer",
-    marginRight: "12px",
     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
     boxShadow: "0 4px 12px rgba(16, 185, 129, 0.15)",
+    textAlign: "center",
+    boxSizing: "border-box",
   },
   btnSuccessPulse: {
     backgroundColor: "#059669",
@@ -92,6 +91,8 @@ const styles = {
     borderRadius: "12px",
     cursor: "pointer",
     transition: "all 0.2s ease",
+    textAlign: "center",
+    boxSizing: "border-box",
   },
   backBtn: {
     display: "inline-flex",
@@ -123,6 +124,16 @@ export default function ProductPage({
   const [error, setError] = useState(null);
   const [isJustAdded, setIsJustAdded] = useState(false);
   const navigate = useNavigate();
+
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 600);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const cartItems = Array.isArray(cart) ? cart : [];
 
@@ -159,6 +170,7 @@ export default function ProductPage({
     };
   }, [API_URL, productId]);
 
+  // ИСПРАВЛЕНО: возвращены индексы элементов массива для корректного чтения данных от API
   const isProductArray = Array.isArray(product);
   const id = isProductArray ? product[0] : product?.id;
   const title = isProductArray ? product[1] : product?.title;
@@ -211,6 +223,10 @@ export default function ProductPage({
     }, 800);
   };
 
+  const handleGoToDrive = () => {
+    navigate("/how-to-drive");
+  };
+
   if (loading) {
     return (
       <div
@@ -247,6 +263,18 @@ export default function ProductPage({
   } else if (isJustAdded) {
     currentBtnStyle = { ...styles.btn, ...styles.btnSuccessPulse };
   }
+
+  const buttonContainerStyle = {
+    marginTop: "30px",
+    display: "flex",
+    gap: "12px",
+    flexDirection: isMobile ? "column" : "row",
+    alignItems: isMobile ? "stretch" : "center",
+  };
+
+  const singleButtonStyle = {
+    width: isMobile ? "100%" : "auto",
+  };
 
   return (
     <div style={styles.container}>
@@ -297,23 +325,35 @@ export default function ProductPage({
         </div>
       )}
 
-      {/* Оригинальная верстка кнопок полностью восстановлена */}
-      <div style={{ marginTop: "30px", display: "flex", gap: "12px" }}>
+      <div style={buttonContainerStyle}>
         <button
-          style={currentBtnStyle}
-          disabled={isInCart || isJustAdded}
-          onClick={() => handleAddToCart({ id, title, price, imageUrl })}
+          style={{ ...styles.btn, ...singleButtonStyle }}
+          onClick={handleGoToDrive}
         >
-          {isInCart ? "В корзине" : isJustAdded ? "Добавлено!" : "Купить"}
+          Купить
         </button>
 
         {token && (
-          <button
-            style={styles.btnDelete}
-            onClick={() => handleDeleteProduct(id)}
-          >
-            Удалить товар
-          </button>
+          <>
+            <button
+              style={{ ...currentBtnStyle, ...singleButtonStyle }}
+              disabled={isInCart || isJustAdded}
+              onClick={() => handleAddToCart({ id, title, price, imageUrl })}
+            >
+              {isInCart
+                ? "В корзине"
+                : isJustAdded
+                  ? "Добавлено!"
+                  : "В корзину"}
+            </button>
+
+            <button
+              style={{ ...styles.btnDelete, ...singleButtonStyle }}
+              onClick={() => handleDeleteProduct(id)}
+            >
+              Удалить товар
+            </button>
+          </>
         )}
       </div>
     </div>
