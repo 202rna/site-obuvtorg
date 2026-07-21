@@ -114,7 +114,7 @@ export default function HowToDrivePage() {
       <div style={styles.mapContainer}>
         {/* ИСПРАВЛЕНО: Вставлен рабочий виджет Яндекс Карт, который открывает ООО Фирма "Обувьторг" */}
         <iframe
-          src="https://yandex.ru/maps/org/obuvtorg/1021044384/"
+          src="https://yandex.ru/map-widget/v1/?um=constructor%3Ab4515a2533267ae08bc45c9f4012b546b2283852673e0335c5d35628d6256b7d&amp;source=constructor"
           width="100%"
           height="100%"
           frameBorder="0"
