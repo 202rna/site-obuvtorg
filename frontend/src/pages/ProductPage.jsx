@@ -5,14 +5,17 @@ import { marked } from "marked";
 const styles = {
   container: {
     maxWidth: "800px",
-    margin: "40px auto",
-    padding: "0 20px",
+    margin: "20px auto",
+    padding: "0 16px",
     fontFamily: "system-ui, -apple-system, sans-serif",
     boxSizing: "border-box",
+    width: "100%",
   },
   imageContainer: {
     width: "100%",
-    height: "400px",
+    height: "auto",
+    aspectRatio: "4 / 3",
+    maxHeight: "400px",
     backgroundColor: "#ffffff",
     borderRadius: "20px",
     display: "flex",
@@ -21,43 +24,44 @@ const styles = {
     marginBottom: "20px",
     overflow: "hidden",
     border: "1px solid #f1f5f9",
-    padding: "20px",
+    padding: "16px",
     boxSizing: "border-box",
   },
   image: {
-    maxWidth: "100%",
-    maxHeight: "100%",
+    width: "100%",
+    height: "100%",
     objectFit: "contain",
   },
   title: {
-    fontSize: "32px",
+    fontSize: "24px",
     fontWeight: "700",
     marginBottom: "12px",
     color: "#0f172a",
     letterSpacing: "-0.5px",
   },
   price: {
-    fontSize: "28px",
+    fontSize: "24px",
     fontWeight: "800",
     color: "#0f172a",
     marginBottom: "20px",
   },
   description: {
-    fontSize: "16px",
-    lineHeight: "1.7",
+    fontSize: "15px",
+    lineHeight: "1.6",
     color: "#475569",
     marginBottom: "24px",
   },
   fullDescription: {
     fontSize: "15px",
-    lineHeight: "1.8",
+    lineHeight: "1.7",
     color: "#1e293b",
     borderTop: "1px solid #e2e8f0",
     paddingTop: "20px",
     marginTop: "20px",
+    wordBreak: "break-word",
   },
   btn: {
-    padding: "14px 36px",
+    padding: "14px 24px",
     fontSize: "15px",
     fontWeight: "600",
     color: "#fff",
@@ -65,9 +69,10 @@ const styles = {
     border: "none",
     borderRadius: "12px",
     cursor: "pointer",
-    marginRight: "12px",
     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
     boxShadow: "0 4px 12px rgba(16, 185, 129, 0.15)",
+    flex: "1 1 auto",
+    textAlign: "center",
   },
   btnSuccessPulse: {
     backgroundColor: "#059669",
@@ -81,7 +86,7 @@ const styles = {
     transform: "scale(1)",
   },
   btnDelete: {
-    padding: "14px 36px",
+    padding: "14px 24px",
     fontSize: "15px",
     fontWeight: "600",
     color: "#ef4444",
@@ -90,6 +95,8 @@ const styles = {
     borderRadius: "12px",
     cursor: "pointer",
     transition: "all 0.2s ease",
+    flex: "1 1 auto",
+    textAlign: "center",
   },
   backBtn: {
     display: "inline-flex",
@@ -106,6 +113,14 @@ const styles = {
     textDecoration: "none",
     boxShadow: "0 4px 14px rgba(124, 58, 237, 0.3)",
     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+  },
+
+  buttonContainer: {
+    marginTop: "30px",
+    display: "flex",
+    gap: "12px",
+    flexWrap: "wrap",
+    width: "100%",
   },
 };
 
@@ -157,7 +172,6 @@ export default function ProductPage({
     };
   }, [API_URL, productId]);
 
-  // Извлекаем свойства безопасно, поддерживая и массив, и объект от API
   const isProductArray = Array.isArray(product);
   const id = isProductArray ? product[0] : product?.id;
   const title = isProductArray ? product[1] : product?.title;
@@ -172,7 +186,6 @@ export default function ProductPage({
 
   const finalImageUrl = imageUrl || "/placeholder.png";
 
-  // Проверяем наличие в корзине по вычисленному id товара
   const isInCart = id
     ? cartItems.some((item) => String(item.id) === String(id))
     : false;
@@ -221,7 +234,6 @@ export default function ProductPage({
     );
   }
 
-  // Обновленное условие: проверяем просто наличие объекта товара (а не строго массив)
   if (error || !product) {
     return (
       <div style={styles.container}>
@@ -235,7 +247,6 @@ export default function ProductPage({
     );
   }
 
-  // Настройка marked
   marked.setOptions({
     breaks: true,
     gfm: true,
@@ -299,35 +310,22 @@ export default function ProductPage({
         </div>
       )}
 
-      <div style={{ marginTop: "30px", display: "flex", gap: "12px" }}>
-        {token && (
-          <button
-            style={currentBtnStyle}
-            disabled={isInCart || isJustAdded}
-            onClick={() =>
-              handleAddToCart({
-                id,
-                title,
-                price,
-                description,
-                image_url: finalImageUrl,
-              })
-            }
-          >
-            {isJustAdded
-              ? "✨ Добавлено!"
-              : isInCart
-                ? "✓ В корзине"
-                : "🛒 Добавить в корзину"}
-          </button>
-        )}
+      {/* Заменили инлайновые стили на созданный styles.buttonContainer */}
+      <div style={styles.buttonContainer}>
+        <button
+          style={currentBtnStyle}
+          disabled={isInCart || isJustAdded}
+          onClick={() => handleAddToCart({ id, title, price, imageUrl })}
+        >
+          {isInCart ? "В корзине" : isJustAdded ? "Добавлено!" : "Купить"}
+        </button>
 
         {token && (
           <button
             style={styles.btnDelete}
             onClick={() => handleDeleteProduct(id)}
           >
-            🗑️ Удалить товар
+            Удалить товар
           </button>
         )}
       </div>

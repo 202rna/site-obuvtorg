@@ -120,7 +120,7 @@ export default function UserNotesPage({ API_URL }) {
       `}</style>
 
       <div style={styles.container}>
-        <h2
+        {/* <h2
           style={{
             color: "#0f172a",
             fontSize: "28px",
@@ -129,7 +129,7 @@ export default function UserNotesPage({ API_URL }) {
           }}
         >
           📄 Новостная лента
-        </h2>
+        </h2> */}
 
         <div style={styles.grid}>
           {notes.map((n) => (
