@@ -5,14 +5,16 @@ import { marked } from "marked";
 const styles = {
   container: {
     maxWidth: "800px",
-    margin: "40px auto",
-    padding: "0 20px",
+    margin: "20px auto", // уменьшен отступ для мобильных
+    padding: "0 16px", // чуть меньше боковых отступов
     fontFamily: "system-ui, -apple-system, sans-serif",
     boxSizing: "border-box",
   },
   imageContainer: {
     width: "100%",
-    height: "400px",
+    height: "auto", // автоподбор высоты
+    aspectRatio: "4 / 3", // соотношение сторон (можно заменить на 1/1)
+    maxHeight: "400px", // ограничение на больших экранах
     backgroundColor: "#ffffff",
     borderRadius: "20px",
     display: "flex",
@@ -21,7 +23,7 @@ const styles = {
     marginBottom: "20px",
     overflow: "hidden",
     border: "1px solid #f1f5f9",
-    padding: "20px",
+    padding: "16px",
     boxSizing: "border-box",
   },
   image: {
@@ -30,23 +32,23 @@ const styles = {
     objectFit: "contain",
   },
   title: {
-    fontSize: "32px",
+    fontSize: "28px", // чуть меньше для мобильных
     fontWeight: "700",
-    marginBottom: "12px",
+    marginBottom: "10px",
     color: "#0f172a",
     letterSpacing: "-0.5px",
   },
   price: {
-    fontSize: "28px",
+    fontSize: "24px",
     fontWeight: "800",
     color: "#0f172a",
-    marginBottom: "20px",
+    marginBottom: "16px",
   },
   description: {
     fontSize: "16px",
     lineHeight: "1.7",
     color: "#475569",
-    marginBottom: "24px",
+    marginBottom: "20px",
   },
   fullDescription: {
     fontSize: "15px",
@@ -69,6 +71,7 @@ const styles = {
     boxShadow: "0 4px 12px rgba(16, 185, 129, 0.15)",
     textAlign: "center",
     boxSizing: "border-box",
+    width: "100%", // на мобильных кнопка растягивается (управляется через контейнер)
   },
   btnSuccessPulse: {
     backgroundColor: "#059669",
@@ -93,11 +96,12 @@ const styles = {
     transition: "all 0.2s ease",
     textAlign: "center",
     boxSizing: "border-box",
+    width: "100%",
   },
   backBtn: {
     display: "inline-flex",
     alignItems: "center",
-    marginBottom: "24px",
+    marginBottom: "20px",
     padding: "10px 20px",
     fontSize: "14px",
     fontWeight: "600",
@@ -170,7 +174,6 @@ export default function ProductPage({
     };
   }, [API_URL, productId]);
 
-  // ИСПРАВЛЕНО: возвращены индексы элементов массива для корректного чтения данных от API
   const isProductArray = Array.isArray(product);
   const id = isProductArray ? product[0] : product?.id;
   const title = isProductArray ? product[1] : product?.title;
@@ -270,10 +273,13 @@ export default function ProductPage({
     gap: "12px",
     flexDirection: isMobile ? "column" : "row",
     alignItems: isMobile ? "stretch" : "center",
+    flexWrap: "wrap",
   };
 
+  // каждая кнопка занимает всю ширину на мобильных, иначе авто
   const singleButtonStyle = {
     width: isMobile ? "100%" : "auto",
+    flex: isMobile ? "1 1 100%" : "0 1 auto",
   };
 
   return (
