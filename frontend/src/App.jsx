@@ -11,6 +11,7 @@ import AdminNotesPage from "./pages/AdminNotePage.jsx";
 import UserNotesPage from "./pages/UserNotesPage.jsx";
 import NoteDetailPage from "./pages/NoteDetailPage.jsx";
 import ProductPage from "./pages/ProductPage";
+import HowToDrivePage from "./pages/HowToDrivePage";
 
 export default function App() {
   const API_URL = "/api";
@@ -126,6 +127,7 @@ export default function App() {
           }
         />
         <Route path="/notes" element={<UserNotesPage API_URL={API_URL} />} />
+        <Route path="/how-to-drive" element={<HowToDrivePage />} />
         <Route
           path="/note/:id"
           element={<NoteDetailPage API_URL={API_URL} />}

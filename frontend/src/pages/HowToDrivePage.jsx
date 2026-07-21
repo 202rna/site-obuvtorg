@@ -68,10 +68,12 @@ export default function HowToDrivePage() {
   return (
     <div style={styles.container}>
       <button style={styles.backBtn} onClick={() => navigate(-1)}>
-        ← Назад к товару
+        ← Назад
       </button>
 
-      <h1 style={styles.title}>ООО Фирма «Обувьторг» — Схема проезда</h1>
+      <h1 style={styles.title}>
+        ООО Фирма «Обувьторг» — Схема проезда / Покупка товара
+      </h1>
 
       {/* Новый информационный блок о примерке, качестве и наличии */}
       <div style={styles.infoBlock}>
