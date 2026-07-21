@@ -5,16 +5,17 @@ import { marked } from "marked";
 const styles = {
   container: {
     maxWidth: "800px",
-    margin: "20px auto", // уменьшен отступ для мобильных
-    padding: "0 16px", // чуть меньше боковых отступов
+    margin: "20px auto",
+    padding: "0 16px 80px 16px",
     fontFamily: "system-ui, -apple-system, sans-serif",
     boxSizing: "border-box",
+    minHeight: "100vh",
   },
   imageContainer: {
     width: "100%",
-    height: "auto", // автоподбор высоты
-    aspectRatio: "4 / 3", // соотношение сторон (можно заменить на 1/1)
-    maxHeight: "400px", // ограничение на больших экранах
+    height: "auto",
+    aspectRatio: "4 / 3",
+    maxHeight: "400px",
     backgroundColor: "#ffffff",
     borderRadius: "20px",
     display: "flex",
@@ -32,7 +33,7 @@ const styles = {
     objectFit: "contain",
   },
   title: {
-    fontSize: "28px", // чуть меньше для мобильных
+    fontSize: "28px",
     fontWeight: "700",
     marginBottom: "10px",
     color: "#0f172a",
@@ -71,7 +72,7 @@ const styles = {
     boxShadow: "0 4px 12px rgba(16, 185, 129, 0.15)",
     textAlign: "center",
     boxSizing: "border-box",
-    width: "100%", // на мобильных кнопка растягивается (управляется через контейнер)
+    // width убираем, чтобы управлять через singleButtonStyle
   },
   btnSuccessPulse: {
     backgroundColor: "#059669",
@@ -96,7 +97,7 @@ const styles = {
     transition: "all 0.2s ease",
     textAlign: "center",
     boxSizing: "border-box",
-    width: "100%",
+    // width убираем
   },
   backBtn: {
     display: "inline-flex",
@@ -233,7 +234,11 @@ export default function ProductPage({
   if (loading) {
     return (
       <div
-        style={{ ...styles.container, textAlign: "center", padding: "40px" }}
+        style={{
+          ...styles.container,
+          textAlign: "center",
+          padding: "40px 16px",
+        }}
       >
         <h2>Загрузка товара...</h2>
       </div>
@@ -269,6 +274,7 @@ export default function ProductPage({
 
   const buttonContainerStyle = {
     marginTop: "30px",
+    marginBottom: "40px", // ✅ добавлен нижний отступ
     display: "flex",
     gap: "12px",
     flexDirection: isMobile ? "column" : "row",
@@ -276,10 +282,15 @@ export default function ProductPage({
     flexWrap: "wrap",
   };
 
-  // каждая кнопка занимает всю ширину на мобильных, иначе авто
   const singleButtonStyle = {
     width: isMobile ? "100%" : "auto",
     flex: isMobile ? "1 1 100%" : "0 1 auto",
+  };
+
+  // ✅ для мобильных уменьшаем максимальную высоту изображения
+  const imageContainerStyle = {
+    ...styles.imageContainer,
+    maxHeight: isMobile ? "250px" : "400px",
   };
 
   return (
@@ -301,7 +312,7 @@ export default function ProductPage({
         ← Назад к списку
       </div>
 
-      <div style={styles.imageContainer}>
+      <div style={imageContainerStyle}>
         <img
           src={finalImageUrl}
           alt={title || "Товар"}
