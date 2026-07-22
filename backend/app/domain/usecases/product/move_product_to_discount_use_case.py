@@ -2,16 +2,18 @@ from app.domain.ports import ProductRepositoryPort
 
 
 class MoveProductToDiscount:
-    """Отправка товаров в таблицу уцененных товаров с возможно новой ценой."""
+    """Помечает товар как уценённый (устанавливает discount > 0)."""
+
     def __init__(self, product_repo: ProductRepositoryPort):
         self.product_repo = product_repo
 
     async def execute(self, product_id: int, product_discount: int) -> bool:
+        if product_discount < 0 or product_discount > 100:
+            raise ValueError("Скидка должна быть от 0 до 100%")
         product = await self.product_repo.get_by_id(product_id=product_id)
-        if product is not None:
-            product_price = product["price"]
-            return await self.product_repo.move_to_discounted(
-                product_id=product_id,
-                new_price=(product_price * (100 - product_discount) + 50) // 100
-            )
-        return False
+        if product is None:
+            return False
+        return await self.product_repo.update(
+            product_id=product_id,
+            discount=product_discount,
+        )

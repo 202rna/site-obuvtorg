@@ -126,6 +126,19 @@ export default function App() {
             />
           }
         />
+        <Route
+          path="/discount"
+          element={
+            <ProductsPage
+              API_URL={API_URL}
+              addToCart={addToCart}
+              token={token}
+              userRole={profile?.role || "user"}
+              cart={cart}
+              discountedOnly
+            />
+          }
+        />
         <Route path="/notes" element={<UserNotesPage API_URL={API_URL} />} />
         <Route path="/how-to-drive" element={<HowToDrivePage />} />
         <Route
@@ -140,6 +153,7 @@ export default function App() {
               addToCart={addToCart}
               token={token}
               cart={cart}
+              userRole={profile?.role || "user"}
             />
           }
         />

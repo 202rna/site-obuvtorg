@@ -1,5 +1,10 @@
+import { getFinalPrice, formatPrice } from "../utils/price";
+
 export default function CartPage({ cart, clearCart }) {
-  const totalPrice = cart.reduce((sum, item) => sum + item.price, 0);
+  const totalPrice = cart.reduce(
+    (sum, item) => sum + getFinalPrice(item.price, item.discount),
+    0,
+  );
 
   const styles = {
     card: {
@@ -44,23 +49,29 @@ export default function CartPage({ cart, clearCart }) {
       <h2>Ваша корзина 🛒</h2>
       {cart.length === 0 ? (
         <p style={{ color: "#697386", fontStyle: "italic" }}>
-          В корзине пока пусто. Добавьте курсы из каталога!
+          В корзине пока пусто. Добавьте товары из каталога!
         </p>
       ) : (
         <div>
-          {cart.map((item, index) => (
-            <div key={index} style={styles.item}>
-              <span style={{ fontWeight: "500" }}>{item.title}</span>
-              <span style={{ color: "#28a745", fontWeight: "600" }}>
-                {item.price.toLocaleString("ru-RU")} ₽
-              </span>
-            </div>
-          ))}
+          {cart.map((item, index) => {
+            const finalPrice = getFinalPrice(item.price, item.discount);
+            return (
+              <div key={index} style={styles.item}>
+                <span style={{ fontWeight: "500" }}>
+                  {item.title}
+                  {item.discount > 0 ? ` (−${item.discount}%)` : ""}
+                </span>
+                <span style={{ color: "#28a745", fontWeight: "600" }}>
+                  {formatPrice(finalPrice)} ₽
+                </span>
+              </div>
+            );
+          })}
 
           <div style={styles.totalBlock}>
             <span>Итоговая стоимость:</span>
             <span style={{ color: "#28a745" }}>
-              {totalPrice.toLocaleString("ru-RU")} ₽
+              {formatPrice(totalPrice)} ₽
             </span>
           </div>
 

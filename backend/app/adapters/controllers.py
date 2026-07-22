@@ -21,6 +21,7 @@ from app.domain.usecases.product.get_products_use_case import GetProductsUseCase
 from app.domain.usecases.product.add_product_use_case import AddProductUseCase
 from app.domain.usecases.product.delete_product_use_case import DeleteProductUseCase
 from app.domain.usecases.product.get_product_by_id_use_case import GetProductByIdUseCase
+from app.domain.usecases.product.update_product_use_case import UpdateProductUseCase
 
 from app.domain.usecases.cart.add_to_cart_use_case import AddToCartUseCase
 from app.domain.usecases.cart.get_cart_use_case import GetCartUseCase
@@ -60,6 +61,14 @@ class NoteUpdateSchema(BaseModel):
     image_url: str | None = None
 
 
+class ProductUpdateSchema(BaseModel):
+    title: str | None = None
+    price: float | None = None
+    description: str | None = None
+    full_description: str | None = None
+    discount: int | None = None
+
+
 def create_user_router(
     get_product_by_id_use_case: GetProductByIdUseCase,
     get_one_note_use_case: GetOneNoteByIdUseCase,
@@ -72,7 +81,8 @@ def create_user_router(
     get_profile_use_case: GetProfileUseCase,
     get_products_use_case: GetProductsUseCase,
     add_product_use_case: AddProductUseCase,
-    delete_product_use_case: DeleteProductUseCase, 
+    delete_product_use_case: DeleteProductUseCase,
+    update_product_use_case: UpdateProductUseCase,
     add_to_cart_use_case: AddToCartUseCase,
     get_cart_use_case: GetCartUseCase,
     clear_cart_use_case: ClearCartUseCase,
@@ -150,21 +160,25 @@ def create_user_router(
         }
 
     @router.get("/products", status_code=status.HTTP_200_OK)
-    async def get_products(last_id: int | None = None, limit: int = 30):
-        """Получение списка продуктов
+    async def get_products(
+        last_id: int | None = None,
+        limit: int = 30,
+        discounted_only: bool = False,
+    ):
+        """Получение списка продуктов.
 
         Args:
-            last_id (int | None, optional): _description_. Defaults to None.
-            limit (int, optional): _description_. Defaults to 30.
-
-        Raises:
-            HTTPException: 500 Internal Server Error, сбой при обращении к бд.
-
-        Returns:
-            list: Список товаров.
+            last_id: курсор пагинации.
+            limit: размер страницы.
+            discounted_only: если True — только товары со скидкой (уценка),
+                иначе — обычный каталог без уценённых.
         """
         try:
-            return await get_products_use_case.execute(last_id=last_id, limit=limit)
+            return await get_products_use_case.execute(
+                last_id=last_id,
+                limit=limit,
+                discounted_only=discounted_only,
+            )
         except Exception:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ошибка загрузки товаров")
 
@@ -197,7 +211,8 @@ def create_user_router(
         description: str = Form(...),
         file: UploadFile = File(...),
         current_user: User = Depends(get_current_user),
-        full_description: str = Form(None)
+        full_description: str = Form(None),
+        discount: int = Form(0),
     ):
         """Принимает описание товара от пользователя. Регирует товар в бд и 
         сохраняет его в локальное статическое хранинилище
@@ -208,6 +223,7 @@ def create_user_router(
             description (str, optional): Описание.
             file (UploadFile, optional): Фото товара.
             current_user (User, optional): Пользовательл.
+            discount (int): Скидка в процентах (0–100).
 
         Raises:
             HTTPException: 403 Frbidden, у пользователя не достаточно прав.
@@ -234,14 +250,52 @@ def create_user_router(
                 price=float(price),
                 description=description,
                 image_url=image_url,
-                full_description=full_description
+                full_description=full_description,
+                discount=int(discount or 0),
             )
             return new_product
 
         except PermissionError as e:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
         except Exception as e:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ошибка загрузки файла")
+
+    @router.patch("/products/{product_id}", status_code=status.HTTP_200_OK)
+    async def update_product(
+        product_id: int,
+        data: ProductUpdateSchema,
+        current_user: User = Depends(get_current_user),
+    ):
+        """Частичное обновление товара (цена, описание, скидка и др.). Только admin."""
+        try:
+            update_data = data.model_dump(exclude_unset=True)
+            if not update_data:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Нет полей для обновления",
+                )
+            success = await update_product_use_case.execute(
+                user_role=current_user.role,
+                product_id=product_id,
+                fields_to_update=update_data,
+            )
+            if not success:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Товар не найден",
+                )
+            return {"message": "Товар успешно обновлён"}
+        except PermissionError as e:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"Ошибка обновления товара: {e}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ошибка обновления товара")
 
     
     @router.get("/cart", status_code=status.HTTP_200_OK)

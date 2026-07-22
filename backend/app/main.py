@@ -25,6 +25,7 @@ from app.domain.usecases.note.update_note_use_case import UpdateNoteUseCase
 from app.domain.usecases.note.get_all_use_case import GetAllNotesUseCase
 from app.domain.usecases.note.get_one_by_id_use_case import GetOneNoteByIdUseCase
 from app.domain.usecases.product.get_product_by_id_use_case import GetProductByIdUseCase
+from app.domain.usecases.product.update_product_use_case import UpdateProductUseCase
 
 
 @asynccontextmanager
@@ -79,6 +80,7 @@ get_products_use_case = GetProductsUseCase(product_repo=product_repository)
 add_product_use_case = AddProductUseCase(product_repo=product_repository)
 get_product_by_id_use_case = GetProductByIdUseCase(product_repo=product_repository)
 delete_product_use_case = DeleteProductUseCase(product_repo=product_repository)
+update_product_use_case = UpdateProductUseCase(product_repo=product_repository)
 add_to_cart_use_case = AddToCartUseCase(cart_repo=cart_repository)
 get_cart_use_case = GetCartUseCase(cart_repo=cart_repository)
 clear_cart_use_case = ClearCartUseCase(cart_repo=cart_repository)
@@ -97,6 +99,7 @@ user_router = create_user_router(
     get_products_use_case=get_products_use_case,
     add_product_use_case=add_product_use_case,
     delete_product_use_case=delete_product_use_case,
+    update_product_use_case=update_product_use_case,
     add_to_cart_use_case=add_to_cart_use_case,  
     get_cart_use_case=get_cart_use_case,        
     clear_cart_use_case=clear_cart_use_case,    

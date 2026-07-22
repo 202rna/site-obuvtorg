@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { marked } from "marked";
+import { getFinalPrice, formatPrice } from "../utils/price";
 
 const styles = {
   container: {
@@ -18,6 +19,7 @@ const styles = {
     maxHeight: "400px",
     backgroundColor: "#ffffff",
     borderRadius: "20px",
+    
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -44,6 +46,23 @@ const styles = {
     fontWeight: "800",
     color: "#0f172a",
     marginBottom: "16px",
+  },
+  oldPrice: {
+    fontSize: "16px",
+    fontWeight: "500",
+    color: "#94a3b8",
+    textDecoration: "line-through",
+    marginRight: "10px",
+  },
+  badge: {
+    display: "inline-block",
+    backgroundColor: "#dc2626",
+    color: "#fff",
+    fontSize: "13px",
+    fontWeight: "700",
+    padding: "4px 10px",
+    borderRadius: "8px",
+    marginBottom: "12px",
   },
   description: {
     fontSize: "16px",
@@ -72,7 +91,6 @@ const styles = {
     boxShadow: "0 4px 12px rgba(16, 185, 129, 0.15)",
     textAlign: "center",
     boxSizing: "border-box",
-    // width убираем, чтобы управлять через singleButtonStyle
   },
   btnSuccessPulse: {
     backgroundColor: "#059669",
@@ -97,7 +115,18 @@ const styles = {
     transition: "all 0.2s ease",
     textAlign: "center",
     boxSizing: "border-box",
-    // width убираем
+  },
+  btnEdit: {
+    padding: "14px 36px",
+    fontSize: "15px",
+    fontWeight: "600",
+    color: "#fff",
+    backgroundColor: "#4f46e5",
+    border: "none",
+    borderRadius: "12px",
+    cursor: "pointer",
+    textAlign: "center",
+    boxSizing: "border-box",
   },
   backBtn: {
     display: "inline-flex",
@@ -115,6 +144,44 @@ const styles = {
     boxShadow: "0 4px 14px rgba(124, 58, 237, 0.3)",
     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
   },
+  editCard: {
+    marginTop: "24px",
+    padding: "20px",
+    backgroundColor: "#fff",
+    borderRadius: "16px",
+    border: "1px solid #e2e8f0",
+  },
+  input: {
+    width: "100%",
+    padding: "12px",
+    fontSize: "15px",
+    borderRadius: "8px",
+    border: "1px solid #d9dce1",
+    boxSizing: "border-box",
+    marginBottom: "12px",
+    outline: "none",
+    fontFamily: "inherit",
+  },
+  textarea: {
+    width: "100%",
+    padding: "12px",
+    fontSize: "15px",
+    borderRadius: "8px",
+    border: "1px solid #d9dce1",
+    boxSizing: "border-box",
+    marginBottom: "12px",
+    outline: "none",
+    fontFamily: "inherit",
+    minHeight: "100px",
+    resize: "vertical",
+  },
+  label: {
+    display: "block",
+    fontSize: "13px",
+    color: "#64748b",
+    marginBottom: "6px",
+    fontWeight: "600",
+  },
 };
 
 export default function ProductPage({
@@ -122,12 +189,20 @@ export default function ProductPage({
   addToCart = () => {},
   token,
   cart = [],
+  userRole = "user",
 }) {
   const { productId } = useParams();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isJustAdded, setIsJustAdded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editPrice, setEditPrice] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editFullDescription, setEditFullDescription] = useState("");
+  const [editDiscount, setEditDiscount] = useState("0");
+  const [editMsg, setEditMsg] = useState({ text: "", isError: false });
+  const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
@@ -141,6 +216,7 @@ export default function ProductPage({
   }, []);
 
   const cartItems = Array.isArray(cart) ? cart : [];
+  const isAdmin = token && userRole === "admin";
 
   useEffect(() => {
     let isMounted = true;
@@ -153,13 +229,23 @@ export default function ProductPage({
 
         if (!isMounted) return;
 
+        // #region agent log
+        fetch('http://127.0.0.1:7387/ingest/6c7cf841-34a1-48fd-8972-fd7dd2a3fdc7',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f641e'},body:JSON.stringify({sessionId:'3f641e',runId:'post-fix',hypothesisId:'A,B,C',location:'ProductPage.jsx:fetchProduct',message:'product by id response',data:{productId,status:response.status,ok:response.ok,dataType:Array.isArray(data)?'array':typeof data,isArray:Array.isArray(data),keys:data&&typeof data==='object'&&!Array.isArray(data)?Object.keys(data):null,arrayLen:Array.isArray(data)?data.length:null,title:data?.title,price:data?.price,image_url:data?.image_url,discount:data?.discount,rawPreview:Array.isArray(data)?data.slice(0,3):null},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+
         if (response.ok) {
-          console.log("ДАННЫЕ ОТ СЕРВЕРА:", data);
           setProduct(data);
+          setEditPrice(String(data.price ?? ""));
+          setEditDescription(data.description || "");
+          setEditFullDescription(data.full_description || "");
+          setEditDiscount(String(data.discount ?? 0));
         } else {
           setError(data.detail || "Товар не найден");
         }
       } catch (err) {
+        // #region agent log
+        fetch('http://127.0.0.1:7387/ingest/6c7cf841-34a1-48fd-8972-fd7dd2a3fdc7',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f641e'},body:JSON.stringify({sessionId:'3f641e',runId:'post-fix',hypothesisId:'B',location:'ProductPage.jsx:fetchProduct:catch',message:'product fetch threw',data:{productId,error:String(err)},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         if (isMounted) setError("Ошибка загрузки товара");
       } finally {
         if (isMounted) setLoading(false);
@@ -175,17 +261,15 @@ export default function ProductPage({
     };
   }, [API_URL, productId]);
 
-  const isProductArray = Array.isArray(product);
-  const id = isProductArray ? product[0] : product?.id;
-  const title = isProductArray ? product[1] : product?.title;
-  const price = isProductArray ? product[2] : product?.price;
-  const description = isProductArray ? product[3] : product?.description;
-  const imageUrl = isProductArray
-    ? product[4]
-    : product?.image_url || product?.imageUrl;
-  const fullDescription = isProductArray
-    ? product[5]
-    : product?.full_description || product?.fullDescription;
+  const id = product?.id;
+  const title = product?.title;
+  const price = product?.price;
+  const description = product?.description;
+  const imageUrl = product?.image_url || product?.imageUrl;
+  const fullDescription =
+    product?.full_description || product?.fullDescription;
+  const discount = product?.discount || 0;
+  const finalPrice = getFinalPrice(price, discount);
 
   const finalImageUrl = imageUrl || "/placeholder.png";
 
@@ -213,6 +297,48 @@ export default function ProductPage({
     } catch (err) {
       console.error(err);
       alert("Произошла ошибка при удалении");
+    }
+  }
+
+  async function handleSaveEdit(e) {
+    e.preventDefault();
+    setSaving(true);
+    setEditMsg({ text: "", isError: false });
+    try {
+      const response = await fetch(`${API_URL}/products/${id}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          price: Number(editPrice),
+          description: editDescription,
+          full_description: editFullDescription,
+          discount: Number(editDiscount),
+        }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setProduct((prev) => ({
+          ...prev,
+          price: Number(editPrice),
+          description: editDescription,
+          full_description: editFullDescription,
+          discount: Number(editDiscount),
+        }));
+        setEditMsg({ text: "Товар обновлён", isError: false });
+        setEditing(false);
+      } else {
+        setEditMsg({
+          text: data.detail || "Не удалось обновить товар",
+          isError: true,
+        });
+      }
+    } catch {
+      setEditMsg({ text: "Ошибка сети", isError: true });
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -274,7 +400,7 @@ export default function ProductPage({
 
   const buttonContainerStyle = {
     marginTop: "30px",
-    marginBottom: "40px", // ✅ добавлен нижний отступ
+    marginBottom: "40px",
     display: "flex",
     gap: "12px",
     flexDirection: isMobile ? "column" : "row",
@@ -287,7 +413,6 @@ export default function ProductPage({
     flex: isMobile ? "1 1 100%" : "0 1 auto",
   };
 
-  // ✅ для мобильных уменьшаем максимальную высоту изображения
   const imageContainerStyle = {
     ...styles.imageContainer,
     maxHeight: isMobile ? "250px" : "400px",
@@ -326,11 +451,13 @@ export default function ProductPage({
 
       <h1 style={styles.title}>{title || "Без названия"}</h1>
 
+      {discount > 0 && <span style={styles.badge}>-{discount}%</span>}
+
       <div style={styles.price}>
-        {price != null
-          ? Number(price).toLocaleString("ru-RU")
-          : "Цена не указана"}{" "}
-        ₽
+        {discount > 0 && price != null && (
+          <span style={styles.oldPrice}>{formatPrice(price)} ₽</span>
+        )}
+        {price != null ? formatPrice(finalPrice) : "Цена не указана"} ₽
       </div>
 
       <div style={styles.description}>{description || ""}</div>
@@ -351,19 +478,38 @@ export default function ProductPage({
         </button>
 
         {token && (
+          <button
+            style={{ ...currentBtnStyle, ...singleButtonStyle }}
+            disabled={isInCart || isJustAdded}
+            onClick={() =>
+              handleAddToCart({
+                id,
+                title,
+                price,
+                discount,
+                imageUrl,
+              })
+            }
+          >
+            {isInCart
+              ? "В корзине"
+              : isJustAdded
+                ? "Добавлено!"
+                : "В корзину"}
+          </button>
+        )}
+
+        {isAdmin && (
           <>
             <button
-              style={{ ...currentBtnStyle, ...singleButtonStyle }}
-              disabled={isInCart || isJustAdded}
-              onClick={() => handleAddToCart({ id, title, price, imageUrl })}
+              style={{ ...styles.btnEdit, ...singleButtonStyle }}
+              onClick={() => {
+                setEditing((v) => !v);
+                setEditMsg({ text: "", isError: false });
+              }}
             >
-              {isInCart
-                ? "В корзине"
-                : isJustAdded
-                  ? "Добавлено!"
-                  : "В корзину"}
+              {editing ? "Отмена" : "Редактировать"}
             </button>
-
             <button
               style={{ ...styles.btnDelete, ...singleButtonStyle }}
               onClick={() => handleDeleteProduct(id)}
@@ -373,6 +519,75 @@ export default function ProductPage({
           </>
         )}
       </div>
+
+      {isAdmin && editing && (
+        <form style={styles.editCard} onSubmit={handleSaveEdit}>
+          <h3 style={{ marginTop: 0, marginBottom: "16px" }}>
+            Редактирование товара
+          </h3>
+
+          {editMsg.text && (
+            <div
+              style={{
+                padding: "10px 12px",
+                borderRadius: "8px",
+                marginBottom: "12px",
+                backgroundColor: editMsg.isError ? "#fef3f2" : "#edfcf2",
+                color: editMsg.isError ? "#b42318" : "#0ea341",
+                fontWeight: "500",
+                fontSize: "14px",
+              }}
+            >
+              {editMsg.text}
+            </div>
+          )}
+
+          <label style={styles.label}>Цена (₽)</label>
+          <input
+            type="number"
+            style={styles.input}
+            value={editPrice}
+            onChange={(e) => setEditPrice(e.target.value)}
+            min="0"
+            step="0.01"
+            required
+          />
+
+          <label style={styles.label}>Скидка (%)</label>
+          <input
+            type="number"
+            style={styles.input}
+            value={editDiscount}
+            onChange={(e) => setEditDiscount(e.target.value)}
+            min="0"
+            max="100"
+            required
+          />
+
+          <label style={styles.label}>Краткое описание</label>
+          <textarea
+            style={styles.textarea}
+            value={editDescription}
+            onChange={(e) => setEditDescription(e.target.value)}
+            required
+          />
+
+          <label style={styles.label}>Подробное описание</label>
+          <textarea
+            style={{ ...styles.textarea, minHeight: "150px" }}
+            value={editFullDescription}
+            onChange={(e) => setEditFullDescription(e.target.value)}
+          />
+
+          <button
+            type="submit"
+            style={{ ...styles.btnEdit, width: "100%" }}
+            disabled={saving}
+          >
+            {saving ? "Сохранение..." : "Сохранить изменения"}
+          </button>
+        </form>
+      )}
     </div>
   );
 }

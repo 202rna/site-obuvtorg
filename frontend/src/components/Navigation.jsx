@@ -64,6 +64,9 @@ export default function Navigation({
           <Link to="/" className={styles.activeLink}>
             Каталог
           </Link>
+          <Link to="/discount" className={styles.link}>
+            Уценка
+          </Link>
           <Link to="/notes" className={styles.newsLink}>
             📄 Новости
           </Link>

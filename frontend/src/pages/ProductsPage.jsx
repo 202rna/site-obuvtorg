@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { getFinalPrice, formatPrice } from "../utils/price";
 
 export default function ProductsPage({
   API_URL,
@@ -7,6 +8,7 @@ export default function ProductsPage({
   token,
   userRole,
   cart = [],
+  discountedOnly = false,
 }) {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
@@ -14,14 +16,19 @@ export default function ProductsPage({
   const [hasMore, setHasMore] = useState(true);
   const PRODUCTS_LIMIT = 30;
 
+  function productsUrl(lastId) {
+    const params = new URLSearchParams({ limit: String(PRODUCTS_LIMIT) });
+    if (lastId) params.set("last_id", String(lastId));
+    if (discountedOnly) params.set("discounted_only", "true");
+    return `${API_URL}/products?${params.toString()}`;
+  }
+
   async function loadMoreProducts() {
     if (loading || !hasMore) return;
     setLoading(true);
-    const lastId = products.length > 0 ? products[products.length - 1].id : "";
+    const lastId = products.length > 0 ? products[products.length - 1].id : null;
     try {
-      const response = await fetch(
-        `${API_URL}/products?last_id=${lastId}&limit=${PRODUCTS_LIMIT}`,
-      );
+      const response = await fetch(productsUrl(lastId));
       const newProducts = await response.json();
       if (response.ok) {
         setProducts((prev) => [...prev, ...newProducts]);
@@ -56,11 +63,14 @@ export default function ProductsPage({
   useEffect(() => {
     async function loadInitialProducts() {
       setLoading(true);
+      setProducts([]);
+      setHasMore(true);
       try {
-        const response = await fetch(
-          `${API_URL}/products?limit=${PRODUCTS_LIMIT}`,
-        );
+        const response = await fetch(productsUrl(null));
         const initialProducts = await response.json();
+        // #region agent log
+        fetch('http://127.0.0.1:7387/ingest/6c7cf841-34a1-48fd-8972-fd7dd2a3fdc7',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f641e'},body:JSON.stringify({sessionId:'3f641e',runId:'post-fix',hypothesisId:'D,E',location:'ProductsPage.jsx:loadInitialProducts',message:'products list response',data:{discountedOnly,url:productsUrl(null),status:response.status,ok:response.ok,count:Array.isArray(initialProducts)?initialProducts.length:null,items:Array.isArray(initialProducts)?initialProducts.map((p)=>({id:p.id,title:p.title,discount:p.discount,hasDiscountKey:Object.prototype.hasOwnProperty.call(p,'discount')})) : null},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         if (response.ok) {
           setProducts(initialProducts);
           if (initialProducts.length < PRODUCTS_LIMIT) setHasMore(false);
@@ -72,7 +82,7 @@ export default function ProductsPage({
       }
     }
     loadInitialProducts();
-  }, [API_URL]);
+  }, [API_URL, discountedOnly]);
 
   const styles = {
     container: {
@@ -83,9 +93,14 @@ export default function ProductsPage({
       boxSizing: "border-box",
       fontFamily: "system-ui, -apple-system, sans-serif",
     },
+    heading: {
+      fontSize: "22px",
+      fontWeight: "700",
+      color: "#0f172a",
+      margin: "8px 0 24px 0",
+    },
     grid: {
       display: "grid",
-      // Базовая настройка для десктопа (минимум 280px на карточку)
       gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
       gap: "32px",
       marginBottom: "40px",
@@ -99,6 +114,19 @@ export default function ProductsPage({
       border: "1px solid rgba(255, 255, 255, 0.6)",
       display: "flex",
       flexDirection: "column",
+      position: "relative",
+    },
+    badge: {
+      position: "absolute",
+      top: "12px",
+      right: "12px",
+      backgroundColor: "#dc2626",
+      color: "#fff",
+      fontSize: "12px",
+      fontWeight: "700",
+      padding: "4px 10px",
+      borderRadius: "8px",
+      zIndex: 1,
     },
     imgContainer: {
       width: "100%",
@@ -138,6 +166,13 @@ export default function ProductsPage({
       color: "#0f172a",
       marginBottom: "20px",
     },
+    oldPrice: {
+      fontSize: "14px",
+      fontWeight: "500",
+      color: "#94a3b8",
+      textDecoration: "line-through",
+      marginRight: "8px",
+    },
     btnMore: {
       padding: "14px 36px",
       fontSize: "15px",
@@ -176,7 +211,6 @@ export default function ProductsPage({
 
   return (
     <div style={styles.container}>
-      {/* Добавляем стили для мобильных устройств */}
       <style>{`
         @media (max-width: 600px) {
           .products-container {
@@ -221,21 +255,35 @@ export default function ProductsPage({
         }
       `}</style>
 
-      {/* Применяем классы для медиазапросов */}
       <div className="products-container" style={styles.container}>
+        {discountedOnly && <h2 style={styles.heading}>Уценка</h2>}
+
+        {!loading && products.length === 0 && (
+          <p style={{ color: "#64748b", textAlign: "center", marginTop: "40px" }}>
+            {discountedOnly
+              ? "Пока нет товаров со скидкой"
+              : "Каталог пока пуст"}
+          </p>
+        )}
+
         <div className="products-grid" style={styles.grid}>
           {products.map((p) => {
             const isInCart = cart.some(
               (item) => String(item.id) === String(p.id),
             );
+            const discount = p.discount || 0;
+            const finalPrice = getFinalPrice(p.price, discount);
 
             return (
               <div
                 key={p.id}
                 className="product-card"
                 style={{ ...styles.card, cursor: "pointer" }}
-                onClick={() => navigate(`/products/${p.id}`)} // переход на страницу товара
+                onClick={() => navigate(`/products/${p.id}`)}
               >
+                {discount > 0 && (
+                  <span style={styles.badge}>-{discount}%</span>
+                )}
                 <div
                   className="product-img-container"
                   style={styles.imgContainer}
@@ -250,7 +298,12 @@ export default function ProductsPage({
                     {p.description}
                   </p>
                   <div className="product-price" style={styles.price}>
-                    {p.price.toLocaleString("ru-RU")} ₽
+                    {discount > 0 && (
+                      <span style={styles.oldPrice}>
+                        {formatPrice(p.price)} ₽
+                      </span>
+                    )}
+                    {formatPrice(finalPrice)} ₽
                   </div>
 
                   {token && (
@@ -265,7 +318,7 @@ export default function ProductsPage({
                           : "0 4px 12px rgba(16, 185, 129, 0.15)",
                       }}
                       onClick={(e) => {
-                        e.stopPropagation(); // предотвращаем переход по карточке
+                        e.stopPropagation();
                         if (!isInCart) addToCart(p);
                       }}
                       disabled={isInCart}
@@ -279,7 +332,7 @@ export default function ProductsPage({
                       className="product-delete-btn"
                       style={styles.deleteBtn}
                       onClick={(e) => {
-                        e.stopPropagation(); // предотвращаем переход
+                        e.stopPropagation();
                         handleDeleteProduct(p.id);
                       }}
                     >

@@ -4,7 +4,8 @@ export default function AdminPage({ API_URL, token }) {
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
-  const [fullDescription, setFullDescription] = useState(""); // <-- новое поле
+  const [fullDescription, setFullDescription] = useState("");
+  const [discount, setDiscount] = useState("0");
   const [file, setFile] = useState(null);
   const [msg, setMsg] = useState({ text: "", isError: false });
 
@@ -24,7 +25,8 @@ export default function AdminPage({ API_URL, token }) {
     formData.append("title", title);
     formData.append("price", price);
     formData.append("description", description);
-    formData.append("full_description", fullDescription || ""); // <-- добавляем
+    formData.append("full_description", fullDescription || "");
+    formData.append("discount", discount || "0");
     formData.append("file", file);
 
     try {
@@ -45,7 +47,8 @@ export default function AdminPage({ API_URL, token }) {
         setTitle("");
         setPrice("");
         setDescription("");
-        setFullDescription(""); // <-- очищаем
+        setFullDescription("");
+        setDiscount("0");
         setFile(null);
         document.getElementById("fileInput").value = "";
       } else {
@@ -156,6 +159,16 @@ export default function AdminPage({ API_URL, token }) {
           value={price}
           onChange={(e) => setPrice(e.target.value)}
           placeholder="Цена (в рублях)"
+        />
+
+        <input
+          type="number"
+          style={styles.input}
+          value={discount}
+          onChange={(e) => setDiscount(e.target.value)}
+          placeholder="Скидка (%)"
+          min="0"
+          max="100"
         />
 
         <input

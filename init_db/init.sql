@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS products (
     , description TEXT
     , image_url TEXT
     , full_description TEXT
+    , discount INT DEFAULT 0
 );
 
 -- Таблица уцененных товаров

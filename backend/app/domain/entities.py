@@ -22,6 +22,7 @@ class Order:
     description: str = ""
     full_description: Optional[str] = None
     image_url: str = ""
+    discount: int = 0
 
 
 @dataclass

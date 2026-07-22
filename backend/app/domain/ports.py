@@ -50,15 +50,20 @@ class TokenProviderPort(ABC):
         pass
 
 
+class MissingType:
+    """Класс-заглушка: отличить «поле стерли» от «поле не передали»."""
+    pass
+
+
 class ProductRepositoryPort(ABC):
     """Интерфейс для управления товарами"""
     @abstractmethod
-    async def get_all(self, last_id: int | None, limit: int) -> list:
-        """Получение товаров по курсору."""
+    async def get_all(self, last_id: int | None, limit: int, discounted_only: bool = False) -> list:
+        """Получение товаров по курсору. discounted_only=True — только с discount > 0."""
         pass
 
     @abstractmethod
-    async def save(self, title: str, price: float, description: str, image_url: str, full_description: str | None) -> dict:
+    async def save(self, title: str, price: float, description: str, image_url: str, full_description: str | None, discount: int = 0) -> dict:
         """Сохранить новый товар в базу данных."""
         pass
 
@@ -66,9 +71,18 @@ class ProductRepositoryPort(ABC):
     async def delete(self, product_id: int) -> str | None:
         """Удалить товар из БД и вернуть URL его картинки."""
         pass
-    
+
     @abstractmethod
-    async def move_to_discounted(self, product_id: int, new_price: int) -> bool:
+    async def update(
+        self,
+        product_id: int,
+        title: str | MissingType = MissingType(),
+        price: float | MissingType = MissingType(),
+        description: str | MissingType = MissingType(),
+        full_description: str | None | MissingType = MissingType(),
+        discount: int | MissingType = MissingType(),
+    ) -> bool:
+        """Частичное обновление товара."""
         pass
     
     @abstractmethod
@@ -92,12 +106,6 @@ class CartRepositoryPort(ABC):
     async def clear(self, user_id: int) -> None:
         """Очистить корзину пользователя."""
         pass
-
-
-class MissingType:
-    """Класс заглушка отличать или полу стерли, или не передали вовсе.
-    """
-    pass
 
 
 class NoteRepositoryPort(ABC):
@@ -131,3 +139,4 @@ class NoteRepositoryPort(ABC):
     @abstractmethod
     async def get_one(self, note_id: int) -> dict:
         """Получение конкретной заметки для чтения."""
+        pass
