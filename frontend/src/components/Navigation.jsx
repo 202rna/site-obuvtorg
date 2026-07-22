@@ -64,9 +64,24 @@ export default function Navigation({
           <Link to="/" className={styles.activeLink}>
             Каталог
           </Link>
-          <Link to="/discount" className={styles.link}>
-            Уценка
+          <Link
+            to="/discount"
+            className={styles.link}
+            style={{
+              color: "#e53e3e",
+              fontFamily: '"Montserrat", "Segoe UI", Roboto, sans-serif',
+              fontWeight: "800",
+              textTransform: "uppercase",
+              letterSpacing: "1px",
+              textDecoration: "none",
+              display: "inline-flex",
+              alignItems: "center",
+            }}
+          >
+            Выгодно
+            <span style={{ color: "#ff9800", marginLeft: "2px" }}>?</span>
           </Link>
+
           <Link to="/notes" className={styles.newsLink}>
             📄 Новости
           </Link>

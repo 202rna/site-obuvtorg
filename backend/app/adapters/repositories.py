@@ -104,31 +104,54 @@ class PostgresProductRepository(ProductRepositoryPort):
         }
 
     async def get_all(self, last_id: int | None, limit: int, discounted_only: bool = False) -> List[dict]:
-        discount_filter = "discount > 0" if discounted_only else "(discount IS NULL OR discount = 0)"
+        
         async with self.pool.connection() as conn:
             async with conn.cursor() as cur:
+                discount_filter = "discount > 0"
                 if last_id is None:
-                    await cur.execute(
-                        f"""
-                        SELECT id, title, price, description, image_url, full_description, discount
-                        FROM products
-                        WHERE {discount_filter}
-                        ORDER BY id ASC
-                        LIMIT %s
-                        """,
-                        (limit,)
-                    )
+                    if discounted_only:
+                        await cur.execute(
+                            f"""
+                            SELECT id, title, price, description, image_url, full_description, discount
+                            FROM products
+                            WHERE {discount_filter}
+                            ORDER BY id ASC
+                            LIMIT %s
+                            """,
+                            (limit,)
+                        )
+                    else:
+                        await cur.execute(
+                            """
+                            SELECT id, title, price, description, image_url, full_description, discount
+                            FROM products
+                            ORDER BY id ASC
+                            LIMIT %s
+                            """,
+                            (limit,)
+                        )
                 else:
-                    await cur.execute(
-                        f"""
-                        SELECT id, title, price, description, image_url, full_description, discount
-                        FROM products
-                        WHERE id > %s AND {discount_filter}
-                        ORDER BY id ASC
-                        LIMIT %s
-                        """,
-                        (last_id, limit)
-                    )
+                    if discounted_only:
+                        await cur.execute(
+                            f"""
+                            SELECT id, title, price, description, image_url, full_description, discount
+                            FROM products
+                            WHERE id > %s AND {discount_filter}
+                            ORDER BY id ASC
+                            LIMIT %s
+                            """,
+                            (last_id, limit)
+                        )
+                    else:
+                        await cur.execute(
+                            """
+                            SELECT id, title, price, description, image_url, full_description, discount
+                            FROM products
+                            ORDER BY id ASC
+                            LIMIT %s
+                            """,
+                            (limit,)
+                        )
                 
                 rows = await cur.fetchall()
                 return [self._row_to_product(row) for row in rows]
