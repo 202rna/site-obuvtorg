@@ -26,7 +26,8 @@ export default function ProductsPage({
   async function loadMoreProducts() {
     if (loading || !hasMore) return;
     setLoading(true);
-    const lastId = products.length > 0 ? products[products.length - 1].id : null;
+    const lastId =
+      products.length > 0 ? products[products.length - 1].id : null;
     try {
       const response = await fetch(productsUrl(lastId));
       const newProducts = await response.json();
@@ -69,7 +70,44 @@ export default function ProductsPage({
         const response = await fetch(productsUrl(null));
         const initialProducts = await response.json();
         // #region agent log
-        fetch('http://127.0.0.1:7387/ingest/6c7cf841-34a1-48fd-8972-fd7dd2a3fdc7',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f641e'},body:JSON.stringify({sessionId:'3f641e',runId:'post-fix',hypothesisId:'D,E',location:'ProductsPage.jsx:loadInitialProducts',message:'products list response',data:{discountedOnly,url:productsUrl(null),status:response.status,ok:response.ok,count:Array.isArray(initialProducts)?initialProducts.length:null,items:Array.isArray(initialProducts)?initialProducts.map((p)=>({id:p.id,title:p.title,discount:p.discount,hasDiscountKey:Object.prototype.hasOwnProperty.call(p,'discount')})) : null},timestamp:Date.now()})}).catch(()=>{});
+        fetch(
+          "http://127.0.0.1:7387/ingest/6c7cf841-34a1-48fd-8972-fd7dd2a3fdc7",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Debug-Session-Id": "3f641e",
+            },
+            body: JSON.stringify({
+              sessionId: "3f641e",
+              runId: "post-fix",
+              hypothesisId: "D,E",
+              location: "ProductsPage.jsx:loadInitialProducts",
+              message: "products list response",
+              data: {
+                discountedOnly,
+                url: productsUrl(null),
+                status: response.status,
+                ok: response.ok,
+                count: Array.isArray(initialProducts)
+                  ? initialProducts.length
+                  : null,
+                items: Array.isArray(initialProducts)
+                  ? initialProducts.map((p) => ({
+                      id: p.id,
+                      title: p.title,
+                      discount: p.discount,
+                      hasDiscountKey: Object.prototype.hasOwnProperty.call(
+                        p,
+                        "discount",
+                      ),
+                    }))
+                  : null,
+              },
+              timestamp: Date.now(),
+            }),
+          },
+        ).catch(() => {});
         // #endregion
         if (response.ok) {
           setProducts(initialProducts);
@@ -256,10 +294,12 @@ export default function ProductsPage({
       `}</style>
 
       <div className="products-container" style={styles.container}>
-        {discountedOnly && <h2 style={styles.heading}>Уценка</h2>}
+        {discountedOnly && <h2 style={styles.heading}></h2>}
 
         {!loading && products.length === 0 && (
-          <p style={{ color: "#64748b", textAlign: "center", marginTop: "40px" }}>
+          <p
+            style={{ color: "#64748b", textAlign: "center", marginTop: "40px" }}
+          >
             {discountedOnly
               ? "Пока нет товаров со скидкой"
               : "Каталог пока пуст"}
@@ -281,9 +321,7 @@ export default function ProductsPage({
                 style={{ ...styles.card, cursor: "pointer" }}
                 onClick={() => navigate(`/products/${p.id}`)}
               >
-                {discount > 0 && (
-                  <span style={styles.badge}>-{discount}%</span>
-                )}
+                {discount > 0 && <span style={styles.badge}>-{discount}%</span>}
                 <div
                   className="product-img-container"
                   style={styles.imgContainer}
