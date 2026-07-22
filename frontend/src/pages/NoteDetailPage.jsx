@@ -115,7 +115,7 @@ export default function NoteDetailPage({ API_URL }) {
   if (loading)
     return (
       <div style={{ textAlign: "center", marginTop: "50px" }}>
-        Загрузка заметки...
+        Загрузка постов...
       </div>
     );
   if (error)
@@ -180,7 +180,7 @@ export default function NoteDetailPage({ API_URL }) {
             "0 4px 14px rgba(124, 58, 237, 0.3)";
         }}
       >
-        ← К списку заметок
+        ← Вернуться к списку
       </div>
 
       <div style={styles.card}>
