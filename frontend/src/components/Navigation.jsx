@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
 import styles from "./Navigation.module.css";
 import logoImg from "../assets/logo-no-bg.png";
-// Импортируем картинку для "Выгодно"
-import discountBadge from "../assets/discount-badge.png"; // <-- замените на ваш путь
+import discountBadge from "../assets/discount-badge.png";
+import catalogLogo from "../assets/catalog_logo.png"; // 👈 импорт картинки для "Каталог"
 
 export default function Navigation({
   token,
@@ -63,18 +63,27 @@ export default function Navigation({
       {/* Нижняя строка: ссылки + кнопка */}
       <div className={styles.bottomRow}>
         <div className={styles.links}>
+          {/* 👇 Заменяем текст "Каталог" на картинку */}
           <Link to="/" className={styles.activeLink}>
-            Каталог
+            <img
+              src={catalogLogo}
+              alt="Каталог"
+              style={{
+                display: "block",
+                height: "48px", // подберите нужный размер
+                width: "auto",
+                objectFit: "contain",
+              }}
+            />
           </Link>
 
-          {/* Ссылка "Выгодно" теперь картинка */}
           <Link to="/discount" className={styles.link}>
             <img
               src={discountBadge}
               alt="Выгодно"
               style={{
                 display: "block",
-                height: "28px", // регулируйте под свой дизайн
+                height: "28px",
                 width: "auto",
                 objectFit: "contain",
               }}

@@ -6,7 +6,7 @@
   width: 100%;
   padding: 12px 24px;
   border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-  margin-bottom: 10px; /* уменьшен отступ */
+  margin-bottom: 10px;
   gap: 8px;
   font-family:
     system-ui,
@@ -61,7 +61,7 @@
 
 .bottomRow {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap; /* <-- главное: не переносим строку */
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -69,9 +69,11 @@
 
 .links {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: wrap; /* ссылки могут переноситься внутри */
   align-items: center;
   gap: 20px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .link {
@@ -170,61 +172,60 @@
   font-weight: 600 !important;
 }
 
-/* ======= МОБИЛЬНЫЕ СТИЛИ ======= */
+/* Мобильные стили (≤ 768px) */
 @media (max-width: 768px) {
   .nav {
-    padding: 10px 16px;
-    gap: 6px;
+    padding: 8px 12px;
+    gap: 4px;
   }
 
   .topRow {
-    gap: 8px 12px;
+    gap: 6px 10px;
   }
 
   .logo {
-    font-size: 18px;
+    font-size: 16px;
   }
 
   .contacts {
-    font-size: 10px;
-    padding-left: 8px;
+    font-size: 9px;
+    padding-left: 6px;
   }
 
   .phone {
-    font-size: 12px;
+    font-size: 11px;
   }
 
   .bottomRow {
-    gap: 8px;
-    flex-wrap: wrap;
+    gap: 4px;
+    flex-wrap: nowrap; /* сохраняем без переноса */
   }
 
   .links {
-    gap: 12px;
-    flex: 1 1 auto; /* позволяет ссылкам занимать место */
-    min-width: 0; /* предотвращает переполнение */
+    gap: 6px;
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .link,
   .activeLink,
   .newsLink {
-    font-size: 14px;
-    padding: 4px 0;
+    font-size: 12px;
+    padding: 2px 0;
   }
 
   .newsLink {
-    padding: 4px 12px;
+    padding: 2px 8px;
   }
 
   .rightBlock {
-    margin-left: auto; /* прижимаем к правому краю */
-    width: auto; /* не растягиваем на всю ширину */
-    flex-shrink: 0; /* не сжимаем кнопку */
+    margin-left: auto;
+    flex-shrink: 0;
   }
 
   .btnOut,
   .btnIn {
-    padding: 6px 16px;
-    font-size: 13px;
+    padding: 4px 12px;
+    font-size: 12px;
   }
 }
