@@ -33,6 +33,18 @@ from app.domain.entities import User
 
 security = HTTPBearer()
 
+
+def _save_upload_file(file: UploadFile) -> str:
+    filename_str = file.filename or "image.jpg"
+    file_extension = filename_str.split(".")[-1] if "." in filename_str else "jpg"
+    unique_filename = f"{uuid.uuid4()}.{file_extension}"
+    upload_dir = os.path.join("app", "static", "uploads")
+    os.makedirs(upload_dir, exist_ok=True)
+    file_path = os.path.join(upload_dir, unique_filename)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    return f"/static/uploads/{unique_filename}"
+
 class UserRegisterSchema(BaseModel):
     email: str
     password: str
@@ -67,6 +79,9 @@ class ProductUpdateSchema(BaseModel):
     description: str | None = None
     full_description: str | None = None
     discount: int | None = None
+    image_urls: list[str] | None = None
+    categories: list[str] | None = None
+    sizes: list[int] | None = None
 
 
 def create_user_router(
@@ -209,10 +224,12 @@ def create_user_router(
         title: str = Form(...),
         price: float = Form(...),
         description: str = Form(...),
-        file: UploadFile = File(...),
+        files: list[UploadFile] = File(...),
         current_user: User = Depends(get_current_user),
         full_description: str = Form(None),
         discount: int = Form(0),
+        categories: str = Form(""),
+        sizes: str = Form(""),
     ):
         """Принимает описание товара от пользователя. Регирует товар в бд и 
         сохраняет его в локальное статическое хранинилище.
@@ -233,25 +250,26 @@ def create_user_router(
             dict: Данные созданного товара.
         """
         try:
-            filename_str = file.filename or "image.jpg"
-            file_extension = filename_str.split(".")[-1] if "." in filename_str else "jpg"
-            unique_filename = f"{uuid.uuid4()}.{file_extension}"
-            upload_dir = os.path.join("app", "static", "uploads")
-            os.makedirs(upload_dir, exist_ok=True)
-            file_path = os.path.join(upload_dir, unique_filename)
-            with open(file_path, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
-            static_folder_path = "/static/uploads/"
-            image_url = static_folder_path + unique_filename
+            if not files:
+                raise ValueError("Нужно загрузить хотя бы одно изображение")
+
+            image_urls = [_save_upload_file(file) for file in files if file and file.filename]
+            if not image_urls:
+                raise ValueError("Нужно загрузить хотя бы одно изображение")
+
+            parsed_categories = [c.strip() for c in categories.split(",") if c.strip()]
+            parsed_sizes = [int(s.strip()) for s in sizes.split(",") if s.strip()] if sizes.strip() else []
             
             new_product = await add_product_use_case.execute(
                 user_role=current_user.role,
                 title=title,
                 price=float(price),
                 description=description,
-                image_url=image_url,
+                image_urls=image_urls,
                 full_description=full_description,
                 discount=int(discount or 0),
+                categories=parsed_categories,
+                sizes=parsed_sizes,
             )
             return new_product
 
@@ -293,6 +311,69 @@ def create_user_router(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
         except Exception as e:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ошибка обновления товара")
+
+    @router.put("/products/{product_id}/images", status_code=status.HTTP_200_OK)
+    async def replace_product_images(
+        product_id: int,
+        files: list[UploadFile] = File(...),
+        current_user: User = Depends(get_current_user),
+    ):
+        """Заменить все изображения товара (только admin).
+
+        Принимает multipart/form-data с полем files (можно несколько).
+        Сохраняет файлы в static/uploads, обновляет image_urls и image_url (primary) в БД.
+        Старые изображения (локальные /static/uploads/...) удаляются с диска.
+        """
+        try:
+            # проверим, что товар существует и получим список старых изображений
+            existing = await get_product_by_id_use_case.execute(product_id=product_id)
+            if existing is None:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Товар не найден")
+
+            old_urls = existing.get("image_urls") if isinstance(existing, dict) else None
+            if not isinstance(old_urls, list):
+                old_urls = []
+
+            if not files:
+                raise ValueError("Нужно загрузить хотя бы одно изображение")
+
+            new_urls = [_save_upload_file(file) for file in files if file and file.filename]
+            if not new_urls:
+                raise ValueError("Нужно загрузить хотя бы одно изображение")
+
+            success = await update_product_use_case.execute(
+                user_role=current_user.role,
+                product_id=product_id,
+                fields_to_update={"image_urls": new_urls},
+            )
+            if not success:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Товар не найден")
+
+            # удаляем старые локальные файлы (если были)
+            for image_url in old_urls:
+                if not isinstance(image_url, str):
+                    continue
+                if not image_url.startswith("/static/uploads/"):
+                    continue
+                filename = image_url.split("/")[-1]
+                file_path = os.path.join("app", "static", "uploads", filename)
+                if os.path.exists(file_path):
+                    try:
+                        os.remove(file_path)
+                    except Exception:
+                        # не валим запрос из-за проблем с удалением файла
+                        pass
+
+            return {"message": "Изображения обновлены", "image_urls": new_urls}
+
+        except PermissionError as e:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ошибка обновления изображений")
 
     
     @router.get("/cart", status_code=status.HTTP_200_OK)
@@ -381,16 +462,17 @@ def create_user_router(
             dict: Флаг операции и сообщение.
         """
         try:
-            image_url = await delete_product_use_case.execute(
+            image_urls = await delete_product_use_case.execute(
                 user_role=current_user.role,
                 product_id=product_id
             )
-            if not image_url:
+            if not image_urls:
                 raise HTTPException(status_code=404, detail="Товар не найден в базе")
-            filename = image_url.split("/")[-1]
-            file_path = os.path.join("app", "static", "uploads", filename)
-            if os.path.exists(file_path):
-                os.remove(file_path) 
+            for image_url in image_urls:
+                filename = image_url.split("/")[-1]
+                file_path = os.path.join("app", "static", "uploads", filename)
+                if os.path.exists(file_path):
+                    os.remove(file_path)
             return {"success": True, "message": "Товар удален из БД, файл стерт с диска!"}
             
         except PermissionError as e:

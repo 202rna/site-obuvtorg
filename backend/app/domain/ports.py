@@ -63,13 +63,23 @@ class ProductRepositoryPort(ABC):
         pass
 
     @abstractmethod
-    async def save(self, title: str, price: float, description: str, image_url: str, full_description: str | None, discount: int = 0) -> dict:
+    async def save(
+        self,
+        title: str,
+        price: float,
+        description: str,
+        image_urls: list[str],
+        full_description: str | None,
+        discount: int = 0,
+        categories: list[str] | None = None,
+        sizes: list[int] | None = None,
+    ) -> dict:
         """Сохранить новый товар в базу данных."""
         pass
 
     @abstractmethod
-    async def delete(self, product_id: int) -> str | None:
-        """Удалить товар из БД и вернуть URL его картинки."""
+    async def delete(self, product_id: int) -> list[str]:
+        """Удалить товар из БД и вернуть URL его картинок."""
         pass
 
     @abstractmethod
@@ -81,6 +91,9 @@ class ProductRepositoryPort(ABC):
         description: str | MissingType = MissingType(),
         full_description: str | None | MissingType = MissingType(),
         discount: int | MissingType = MissingType(),
+        image_urls: list[str] | MissingType = MissingType(),
+        categories: list[str] | MissingType = MissingType(),
+        sizes: list[int] | MissingType = MissingType(),
     ) -> bool:
         """Частичное обновление товара."""
         pass

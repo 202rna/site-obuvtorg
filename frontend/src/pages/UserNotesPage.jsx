@@ -6,11 +6,9 @@ const styles = {
   container: {
     width: "100%",
     maxWidth: "100%",
-    minHeight: "100vh",
-    padding: "0 24px",
+    padding: "0 24px 40px 24px", // убрали min-height и background
     boxSizing: "border-box",
     fontFamily: "system-ui, -apple-system, sans-serif",
-    backgroundColor: "#f8fafc",
   },
   grid: {
     display: "grid",
@@ -110,57 +108,36 @@ export default function UserNotesPage({ API_URL }) {
 
   return (
     <div style={styles.container}>
-      <style>{`
-        html, body {
-          background-color: #f8fafc !important;
-          margin: 0;
-          padding: 0;
-          min-height: 100%;
-        }
-      `}</style>
+      {/* Заголовок можно раскомментировать при необходимости */}
+      {/* <h2 style={{ color: "#0f172a", fontSize: "28px", fontWeight: "800", margin: "24px 0 0 0" }}>
+        📄 Новостная лента
+      </h2> */}
 
-      <div style={styles.container}>
-        {/* <h2
-          style={{
-            color: "#0f172a",
-            fontSize: "28px",
-            fontWeight: "800",
-            margin: "24px 0 0 0",
-          }}
-        >
-          📄 Новостная лента
-        </h2> */}
+      <div style={styles.grid}>
+        {notes.map((n) => (
+          <div key={n.id} style={styles.card}>
+            <h3 style={styles.title}>{n.title}</h3>
+            <Link to={`/note/${n.id}`} style={styles.btn}>
+              Открыть полностью →
+            </Link>
+          </div>
+        ))}
+      </div>
 
-        <div style={styles.grid}>
-          {notes.map((n) => (
-            <div key={n.id} style={styles.card}>
-              <h3 style={styles.title}>{n.title}</h3>
-              <Link to={`/note/${n.id}`} style={styles.btn}>
-                Открыть полностью →
-              </Link>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ textAlign: "center", paddingBottom: "60px" }}>
-          {hasMore ? (
-            <button
-              style={styles.btnMore}
-              onClick={loadMoreNotes}
-              disabled={loading}
-            >
-              {loading ? "Загрузка..." : "Показать еще заметки"}
-            </button>
-          ) : (
-            <p
-              style={{
-                color: "#64748b",
-                fontStyle: "italic",
-                marginTop: "40px",
-              }}
-            ></p>
-          )}
-        </div>
+      <div style={{ textAlign: "center", paddingBottom: "60px" }}>
+        {hasMore ? (
+          <button
+            style={styles.btnMore}
+            onClick={loadMoreNotes}
+            disabled={loading}
+          >
+            {loading ? "Загрузка..." : "Показать еще заметки"}
+          </button>
+        ) : (
+          <p
+            style={{ color: "#64748b", fontStyle: "italic", marginTop: "40px" }}
+          ></p>
+        )}
       </div>
     </div>
   );

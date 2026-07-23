@@ -93,15 +93,50 @@ class PostgresProductRepository(ProductRepositoryPort):
         self.pool = pool
 
     def _row_to_product(self, row) -> dict:
+        image_urls = row[5] if row[5] else []
+        if not image_urls and row[4]:
+            image_urls = [row[4]]
+
         return {
             "id": row[0],
             "title": row[1],
             "price": float(row[2]),
             "description": row[3],
             "image_url": row[4],
-            "full_description": row[5] if len(row) > 5 else None,
-            "discount": int(row[6]) if len(row) > 6 and row[6] is not None else 0,
+            "image_urls": image_urls,
+            "full_description": row[6] if len(row) > 6 else None,
+            "discount": int(row[7]) if len(row) > 7 and row[7] is not None else 0,
+            "sizes": row[8] if len(row) > 8 and row[8] is not None else [],
+            "categories": row[9] if len(row) > 9 and row[9] is not None else [],
         }
+
+    async def _replace_categories(self, conn, cur, product_id: int, categories: list[str]) -> None:
+        await cur.execute("DELETE FROM product_categories WHERE product_id = %s", (product_id,))
+
+        normalized = [name.strip() for name in categories if str(name).strip()]
+        for category_name in normalized:
+            await cur.execute(
+                """
+                INSERT INTO categories (name)
+                VALUES (%s)
+                ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+                RETURNING id
+                """,
+                (category_name,),
+            )
+            category_row = await cur.fetchone()
+            if not category_row:
+                continue
+
+            category_id = category_row[0]
+            await cur.execute(
+                """
+                INSERT INTO product_categories (product_id, category_id)
+                VALUES (%s, %s)
+                ON CONFLICT (product_id, category_id) DO NOTHING
+                """,
+                (product_id, category_id),
+            )
 
     async def get_all(self, last_id: int | None, limit: int, discounted_only: bool = False) -> List[dict]:
         
@@ -112,10 +147,15 @@ class PostgresProductRepository(ProductRepositoryPort):
                     if discounted_only:
                         await cur.execute(
                             f"""
-                            SELECT id, title, price, description, image_url, full_description, discount
-                            FROM products
-                            WHERE {discount_filter}
-                            ORDER BY id ASC
+                            SELECT p.id, p.title, p.price, p.description, p.image_url, p.image_urls,
+                                   p.full_description, p.discount, p.sizes,
+                                   COALESCE(array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL), '{{}}') AS categories
+                            FROM products p
+                            LEFT JOIN product_categories pc ON pc.product_id = p.id
+                            LEFT JOIN categories c ON c.id = pc.category_id
+                            WHERE p.{discount_filter}
+                            GROUP BY p.id
+                            ORDER BY p.id ASC
                             LIMIT %s
                             """,
                             (limit,)
@@ -123,9 +163,14 @@ class PostgresProductRepository(ProductRepositoryPort):
                     else:
                         await cur.execute(
                             """
-                            SELECT id, title, price, description, image_url, full_description, discount
-                            FROM products
-                            ORDER BY id ASC
+                            SELECT p.id, p.title, p.price, p.description, p.image_url, p.image_urls,
+                                   p.full_description, p.discount, p.sizes,
+                                   COALESCE(array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL), '{}') AS categories
+                            FROM products p
+                            LEFT JOIN product_categories pc ON pc.product_id = p.id
+                            LEFT JOIN categories c ON c.id = pc.category_id
+                            GROUP BY p.id
+                            ORDER BY p.id ASC
                             LIMIT %s
                             """,
                             (limit,)
@@ -134,10 +179,15 @@ class PostgresProductRepository(ProductRepositoryPort):
                     if discounted_only:
                         await cur.execute(
                             f"""
-                            SELECT id, title, price, description, image_url, full_description, discount
-                            FROM products
-                            WHERE id > %s AND {discount_filter}
-                            ORDER BY id ASC
+                            SELECT p.id, p.title, p.price, p.description, p.image_url, p.image_urls,
+                                   p.full_description, p.discount, p.sizes,
+                                   COALESCE(array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL), '{{}}') AS categories
+                            FROM products p
+                            LEFT JOIN product_categories pc ON pc.product_id = p.id
+                            LEFT JOIN categories c ON c.id = pc.category_id
+                            WHERE p.id > %s AND p.{discount_filter}
+                            GROUP BY p.id
+                            ORDER BY p.id ASC
                             LIMIT %s
                             """,
                             (last_id, limit)
@@ -145,59 +195,99 @@ class PostgresProductRepository(ProductRepositoryPort):
                     else:
                         await cur.execute(
                             """
-                            SELECT id, title, price, description, image_url, full_description, discount
-                            FROM products
-                            ORDER BY id ASC
+                            SELECT p.id, p.title, p.price, p.description, p.image_url, p.image_urls,
+                                   p.full_description, p.discount, p.sizes,
+                                   COALESCE(array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL), '{}') AS categories
+                            FROM products p
+                            LEFT JOIN product_categories pc ON pc.product_id = p.id
+                            LEFT JOIN categories c ON c.id = pc.category_id
+                            WHERE p.id > %s
+                            GROUP BY p.id
+                            ORDER BY p.id ASC
                             LIMIT %s
                             """,
-                            (limit,)
+                            (last_id, limit)
                         )
                 
                 rows = await cur.fetchall()
                 return [self._row_to_product(row) for row in rows]
 
-    async def save(self, title: str, price: float, description: str, image_url: str, full_description: str | None = None, discount: int = 0) -> dict:
-        """Сохранение в БД товара.
+    async def save(
+        self,
+        title: str,
+        price: float,
+        description: str,
+        image_urls: list[str],
+        full_description: str | None = None,
+        discount: int = 0,
+        categories: list[str] | None = None,
+        sizes: list[int] | None = None,
+    ) -> dict:
+        normalized_image_urls = [url.strip() for url in image_urls if str(url).strip()]
+        if not normalized_image_urls:
+            raise RuntimeError("Не переданы изображения товара")
 
-        Args:
-            title (str): Название.
-            price (float): Цена.
-            description (str): Описание (короткое).
-            image_url (str): Адрес изображения.
-            full_description (str): Подробное описание.
-            discount (int): Скидка в процентах (0–100).
-        """
+        primary_image_url = normalized_image_urls[0]
+        normalized_sizes = [int(size) for size in (sizes or [])]
+        normalized_categories = [c.strip() for c in (categories or []) if str(c).strip()]
+
         async with self.pool.connection() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(
                     """
-                    INSERT INTO products (title, price, description, image_url, full_description, discount)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    RETURNING id, title, price, description, image_url, full_description, discount
+                    INSERT INTO products (title, price, description, image_url, image_urls, full_description, discount, sizes)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id
                     """,
-                    (title, price, description, image_url, full_description, discount)
+                    (
+                        title,
+                        price,
+                        description,
+                        primary_image_url,
+                        normalized_image_urls,
+                        full_description,
+                        discount,
+                        normalized_sizes,
+                    ),
                 )
                 row = await cur.fetchone()
                 if not row:
                     raise RuntimeError("Не удалось сохранить товар")
-                return self._row_to_product(row)
-    
-    async def delete(self, product_id: int) -> str | None:
-        """Удаление конкретного товара по ID из БД таблицы products.
 
-        Args:
-            product_id (int): Идентификатор удаляемого товара.
+                product_id = row[0]
+                await self._replace_categories(conn, cur, product_id, normalized_categories)
 
-        Returns:
-            str | None: Если товар существовал в таблице то его image_url для последующего удаления файла. Иначе - None.
-        """
+                await cur.execute(
+                    """
+                    SELECT p.id, p.title, p.price, p.description, p.image_url, p.image_urls,
+                           p.full_description, p.discount, p.sizes,
+                           COALESCE(array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL), '{}') AS categories
+                    FROM products p
+                    LEFT JOIN product_categories pc ON pc.product_id = p.id
+                    LEFT JOIN categories c ON c.id = pc.category_id
+                    WHERE p.id = %s
+                    GROUP BY p.id
+                    """,
+                    (product_id,),
+                )
+                full_row = await cur.fetchone()
+                if not full_row:
+                    raise RuntimeError("Не удалось загрузить сохранённый товар")
+
+                return self._row_to_product(full_row)
+
+    async def delete(self, product_id: int) -> list[str]:
+        """Удаление товара и возврат списка ссылок на его изображения."""
         async with self.pool.connection() as conn:
             async with conn.cursor() as cur:
-                await cur.execute("DELETE FROM products WHERE id = %s RETURNING image_url", (product_id,))
+                await cur.execute("DELETE FROM products WHERE id = %s RETURNING image_urls, image_url", (product_id,))
                 row = await cur.fetchone()
                 if row:
-                    return row[0]  
-                return None
+                    image_urls = row[0] if row[0] else []
+                    if not image_urls and row[1]:
+                        image_urls = [row[1]]
+                    return image_urls
+                return []
 
     async def update(
         self,
@@ -207,6 +297,9 @@ class PostgresProductRepository(ProductRepositoryPort):
         description: str | MissingType = Missing,
         full_description: str | None | MissingType = Missing,
         discount: int | MissingType = Missing,
+        image_urls: list[str] | MissingType = Missing,
+        categories: list[str] | MissingType = Missing,
+        sizes: list[int] | MissingType = Missing,
     ) -> bool:
         update_fields = []
         query_args = []
@@ -226,31 +319,53 @@ class PostgresProductRepository(ProductRepositoryPort):
         if discount is not Missing:
             update_fields.append("discount = %s")
             query_args.append(discount)
+        if image_urls is not Missing:
+            primary_image = image_urls[0] if image_urls else None
+            update_fields.append("image_urls = %s")
+            query_args.append(image_urls)
+            update_fields.append("image_url = %s")
+            query_args.append(primary_image)
+        if sizes is not Missing:
+            update_fields.append("sizes = %s")
+            query_args.append(sizes)
 
-        if not update_fields:
-            return True
-
-        query_args.append(product_id)
-        sql_query = f"""
-            UPDATE products
-            SET {", ".join(update_fields)}
-            WHERE id = %s
-            RETURNING id
-        """
         async with self.pool.connection() as conn:
             async with conn.cursor() as cur:
-                await cur.execute(sql_query, query_args)
-                row = await cur.fetchone()
-                return row is not None
+                if update_fields:
+                    query_args.append(product_id)
+                    sql_query = f"""
+                        UPDATE products
+                        SET {", ".join(update_fields)}
+                        WHERE id = %s
+                        RETURNING id
+                    """
+                    await cur.execute(sql_query, query_args)
+                    row = await cur.fetchone()
+                else:
+                    await cur.execute("SELECT id FROM products WHERE id = %s", (product_id,))
+                    row = await cur.fetchone()
+
+                if row is None:
+                    return False
+
+                if categories is not Missing:
+                    await self._replace_categories(conn, cur, product_id, categories)
+
+                return True
     
     async def get_by_id(self, product_id: int) -> dict | None:
         async with self.pool.connection() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(
                     """
-                    SELECT id, title, price, description, image_url, full_description, discount
-                    FROM products
-                    WHERE id = %s
+                    SELECT p.id, p.title, p.price, p.description, p.image_url, p.image_urls,
+                           p.full_description, p.discount, p.sizes,
+                           COALESCE(array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL), '{}') AS categories
+                    FROM products p
+                    LEFT JOIN product_categories pc ON pc.product_id = p.id
+                    LEFT JOIN categories c ON c.id = pc.category_id
+                    WHERE p.id = %s
+                    GROUP BY p.id
                     """,
                     (product_id,)
                 )

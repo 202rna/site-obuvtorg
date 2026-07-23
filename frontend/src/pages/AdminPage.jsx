@@ -6,16 +6,18 @@ export default function AdminPage({ API_URL, token }) {
   const [description, setDescription] = useState("");
   const [fullDescription, setFullDescription] = useState("");
   const [discount, setDiscount] = useState("0");
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
+  const [categories, setCategories] = useState("");
+  const [sizes, setSizes] = useState("");
   const [msg, setMsg] = useState({ text: "", isError: false });
 
   async function handleAddProduct(e) {
     e.preventDefault();
     setMsg({ text: "", isError: false });
 
-    if (!title || !price || !description || !file) {
+    if (!title || !price || !description || files.length === 0) {
       setMsg({
-        text: "Пожалуйста, заполните все поля и выберите фото",
+        text: "Пожалуйста, заполните все поля и выберите хотя бы одно фото",
         isError: true,
       });
       return;
@@ -27,7 +29,9 @@ export default function AdminPage({ API_URL, token }) {
     formData.append("description", description);
     formData.append("full_description", fullDescription || "");
     formData.append("discount", discount || "0");
-    formData.append("file", file);
+    formData.append("categories", categories || "");
+    formData.append("sizes", sizes || "");
+    files.forEach((file) => formData.append("files", file));
 
     try {
       const response = await fetch(`${API_URL}/products`, {
@@ -49,7 +53,9 @@ export default function AdminPage({ API_URL, token }) {
         setDescription("");
         setFullDescription("");
         setDiscount("0");
-        setFile(null);
+        setFiles([]);
+        setCategories("");
+        setSizes("");
         document.getElementById("fileInput").value = "";
       } else {
         setMsg({ text: data.detail || "Ошибка добавления", isError: true });
@@ -58,6 +64,19 @@ export default function AdminPage({ API_URL, token }) {
       setMsg({ text: "Ошибка сети", isError: true });
     }
   }
+
+  const handleFileChange = (e) => {
+    const newFiles = Array.from(e.target.files);
+    if (newFiles.length === 0) return;
+    // Добавляем новые файлы к существующим
+    setFiles((prev) => [...prev, ...newFiles]);
+    // Сбрасываем input, чтобы можно было выбрать ещё файлы
+    e.target.value = "";
+  };
+
+  const removeFile = (index) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const styles = {
     card: {
@@ -100,6 +119,31 @@ export default function AdminPage({ API_URL, token }) {
       marginBottom: "8px",
       fontWeight: "500",
       textAlign: "left",
+    },
+    fileList: {
+      marginTop: "8px",
+      marginBottom: "12px",
+      padding: "0",
+      listStyle: "none",
+    },
+    fileItem: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: "6px 10px",
+      backgroundColor: "#f8fafc",
+      borderRadius: "6px",
+      marginBottom: "4px",
+      fontSize: "14px",
+    },
+    removeBtn: {
+      background: "none",
+      border: "none",
+      color: "#ef4444",
+      cursor: "pointer",
+      fontSize: "16px",
+      fontWeight: "bold",
+      padding: "0 4px",
     },
     btn: {
       width: "100%",
@@ -176,10 +220,25 @@ export default function AdminPage({ API_URL, token }) {
           style={styles.input}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Краткое описание товара"
+          placeholder="Краткое описание товара (Марка / Производитель)"
         />
 
-        {/* Подробное описание с подсказкой по Markdown */}
+        <input
+          type="text"
+          style={styles.input}
+          value={categories}
+          onChange={(e) => setCategories(e.target.value)}
+          placeholder="Категории через запятую (например: Кроссовки, Спорт)"
+        />
+
+        <input
+          type="text"
+          style={styles.input}
+          value={sizes}
+          onChange={(e) => setSizes(e.target.value)}
+          placeholder="Размеры через запятую (например: 36, 37, 38)"
+        />
+
         <label style={{ ...styles.fileLabel, marginTop: "10px" }}>
           Подробное описание товара
         </label>
@@ -195,14 +254,37 @@ export default function AdminPage({ API_URL, token }) {
           список
         </div>
 
-        <label style={styles.fileLabel}>Фото товара (Изображение)</label>
+        <label style={styles.fileLabel}>
+          Фото товара (можно выбрать несколько)
+        </label>
         <input
           id="fileInput"
           type="file"
           accept="image/*"
+          multiple
           style={{ ...styles.input, padding: "8px" }}
-          onChange={(e) => setFile(e.target.files[0])}
+          onChange={handleFileChange}
         />
+
+        {files.length > 0 && (
+          <ul style={styles.fileList}>
+            {files.map((file, index) => (
+              <li key={index} style={styles.fileItem}>
+                <span>
+                  {file.name} ({(file.size / 1024).toFixed(0)} KB)
+                </span>
+                <button
+                  type="button"
+                  style={styles.removeBtn}
+                  onClick={() => removeFile(index)}
+                  title="Удалить файл"
+                >
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
 
         <button type="submit" style={styles.btn}>
           🚀 Создать и загрузить

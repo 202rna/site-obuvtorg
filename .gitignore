@@ -1,1 +1,15 @@
 .env
+
+# Python caches/bytecode
+__pycache__/
+**/__pycache__/
+*.py[cod]
+
+# Build/test tool caches
+.pytest_cache/
+.mypy_cache/
+
+# Accidental local artifacts
+None
+dict
+list[[]str[]]

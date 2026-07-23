@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
 import styles from "./Navigation.module.css";
 import logoImg from "../assets/logo-no-bg.png";
+// Импортируем картинку для "Выгодно"
+import discountBadge from "../assets/discount-badge.png"; // <-- замените на ваш путь
 
 export default function Navigation({
   token,
@@ -64,28 +66,24 @@ export default function Navigation({
           <Link to="/" className={styles.activeLink}>
             Каталог
           </Link>
-          <Link
-            to="/discount"
-            className={styles.link}
-            style={{
-              color: "#e53e3e",
-              fontFamily: '"Montserrat", "Segoe UI", Roboto, sans-serif',
-              fontWeight: "800",
-              textTransform: "uppercase",
-              letterSpacing: "1px",
-              textDecoration: "none",
-              display: "inline-flex",
-              alignItems: "center",
-            }}
-          >
-            Выгодно
-            <span style={{ color: "#ff9800", marginLeft: "2px" }}>?</span>
+
+          {/* Ссылка "Выгодно" теперь картинка */}
+          <Link to="/discount" className={styles.link}>
+            <img
+              src={discountBadge}
+              alt="Выгодно"
+              style={{
+                display: "block",
+                height: "28px", // регулируйте под свой дизайн
+                width: "auto",
+                objectFit: "contain",
+              }}
+            />
           </Link>
 
           <Link to="/notes" className={styles.newsLink}>
             📄 Новости
           </Link>
-          {/* Ссылка "Как проехать" добавлена навигатор */}
           <Link to="/how-to-drive" className={styles.link}>
             🗺️ Как проехать
           </Link>

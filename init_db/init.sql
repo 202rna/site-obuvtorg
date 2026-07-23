@@ -13,8 +13,23 @@ CREATE TABLE IF NOT EXISTS products (
     , price NUMERIC(10, 2) NOT NULL
     , description TEXT
     , image_url TEXT
+    , image_urls TEXT[] NOT NULL DEFAULT '{}'
     , full_description TEXT
     , discount INT DEFAULT 0
+    , sizes INT[] NOT NULL DEFAULT '{}'
+);
+
+-- Категории товаров
+CREATE TABLE IF NOT EXISTS categories (
+    id SERIAL PRIMARY KEY
+    , name VARCHAR(80) NOT NULL UNIQUE
+);
+
+-- Связь many-to-many: товар <-> категория
+CREATE TABLE IF NOT EXISTS product_categories (
+    product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE
+    , category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE
+    , PRIMARY KEY (product_id, category_id)
 );
 
 -- Таблица уцененных товаров

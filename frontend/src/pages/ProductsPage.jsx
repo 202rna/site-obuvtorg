@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { getFinalPrice, formatPrice } from "../utils/price";
 
 export default function ProductsPage({
@@ -11,35 +11,60 @@ export default function ProductsPage({
   discountedOnly = false,
 }) {
   const navigate = useNavigate();
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const PRODUCTS_LIMIT = 30;
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  function productsUrl(lastId) {
-    const params = new URLSearchParams({ limit: String(PRODUCTS_LIMIT) });
-    if (lastId) params.set("last_id", String(lastId));
-    if (discountedOnly) params.set("discounted_only", "true");
-    return `${API_URL}/products?${params.toString()}`;
+  const selectedCategories = searchParams.getAll("category");
+
+  const [products, setProducts] = useState([]);
+  const [imageIndexMap, setImageIndexMap] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadAllProducts() {
+      setLoading(true);
+      try {
+        const response = await fetch(`${API_URL}/products?limit=999`);
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          setProducts(data);
+        } else {
+          setProducts([]);
+        }
+      } catch (err) {
+        console.error("Ошибка загрузки товаров:", err);
+        setProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadAllProducts();
+  }, [API_URL]);
+
+  function getProductImages(product) {
+    const fromArray = Array.isArray(product.image_urls)
+      ? product.image_urls.filter(Boolean)
+      : [];
+    if (fromArray.length > 0) return fromArray;
+    if (product.image_url) return [product.image_url];
+    return ["/placeholder.png"];
   }
 
-  async function loadMoreProducts() {
-    if (loading || !hasMore) return;
-    setLoading(true);
-    const lastId =
-      products.length > 0 ? products[products.length - 1].id : null;
-    try {
-      const response = await fetch(productsUrl(lastId));
-      const newProducts = await response.json();
-      if (response.ok) {
-        setProducts((prev) => [...prev, ...newProducts]);
-        if (newProducts.length < PRODUCTS_LIMIT) setHasMore(false);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+  function showPrevImage(productId, imageCount, e) {
+    e.stopPropagation();
+    setImageIndexMap((prev) => {
+      const current = prev[productId] || 0;
+      const next = (current - 1 + imageCount) % imageCount;
+      return { ...prev, [productId]: next };
+    });
+  }
+
+  function showNextImage(productId, imageCount, e) {
+    e.stopPropagation();
+    setImageIndexMap((prev) => {
+      const current = prev[productId] || 0;
+      const next = (current + 1) % imageCount;
+      return { ...prev, [productId]: next };
+    });
   }
 
   async function handleDeleteProduct(productId) {
@@ -61,67 +86,67 @@ export default function ProductsPage({
     }
   }
 
-  useEffect(() => {
-    async function loadInitialProducts() {
-      setLoading(true);
-      setProducts([]);
-      setHasMore(true);
-      try {
-        const response = await fetch(productsUrl(null));
-        const initialProducts = await response.json();
-        // #region agent log
-        fetch(
-          "http://127.0.0.1:7387/ingest/6c7cf841-34a1-48fd-8972-fd7dd2a3fdc7",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Debug-Session-Id": "3f641e",
-            },
-            body: JSON.stringify({
-              sessionId: "3f641e",
-              runId: "post-fix",
-              hypothesisId: "D,E",
-              location: "ProductsPage.jsx:loadInitialProducts",
-              message: "products list response",
-              data: {
-                discountedOnly,
-                url: productsUrl(null),
-                status: response.status,
-                ok: response.ok,
-                count: Array.isArray(initialProducts)
-                  ? initialProducts.length
-                  : null,
-                items: Array.isArray(initialProducts)
-                  ? initialProducts.map((p) => ({
-                      id: p.id,
-                      title: p.title,
-                      discount: p.discount,
-                      hasDiscountKey: Object.prototype.hasOwnProperty.call(
-                        p,
-                        "discount",
-                      ),
-                    }))
-                  : null,
-              },
-              timestamp: Date.now(),
-            }),
-          },
-        ).catch(() => {});
-        // #endregion
-        if (response.ok) {
-          setProducts(initialProducts);
-          if (initialProducts.length < PRODUCTS_LIMIT) setHasMore(false);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadInitialProducts();
-  }, [API_URL, discountedOnly]);
+  // --- Фильтрация ---
+  const discountFiltered = useMemo(() => {
+    if (!discountedOnly) return products;
+    return products.filter((p) => (p.discount || 0) > 0);
+  }, [products, discountedOnly]);
 
+  // --- Уникальные категории с закреплёнными в начале ---
+  const categories = useMemo(() => {
+    const allCats = discountFiltered.flatMap((p) => p.categories || []);
+    const unique = [...new Set(allCats)];
+
+    // Список приоритетных категорий (в нужном порядке)
+    const priority = ["для детей", "мужская", "женская"];
+
+    // Разделяем на приоритетные и остальные
+    const priorityCats = priority.filter((cat) => unique.includes(cat));
+    const otherCats = unique
+      .filter((cat) => !priority.includes(cat))
+      .sort((a, b) => a.localeCompare(b));
+
+    return [...priorityCats, ...otherCats];
+  }, [discountFiltered]);
+
+  // --- Фильтр h2ов по выбранным категориям ---
+  const filteredProducts = useMemo(() => {
+    if (selectedCategories.length === 0) return discountFiltered;
+    return discountFiltered.filter(
+      (p) =>
+        p.categories &&
+        p.categories.some((cat) => selectedCategories.includes(cat)),
+    );
+  }, [discountFiltered, selectedCategories]);
+
+  // --- Обработчики ---
+  const handleCategoryToggle = (cat) => {
+    setSearchParams((prev) => {
+      const newParams = new URLSearchParams(prev);
+      const current = newParams.getAll("category");
+      const isSelected = current.includes(cat);
+      newParams.delete("category");
+
+      if (isSelected) {
+        const updated = current.filter((c) => c !== cat);
+        updated.forEach((c) => newParams.append("category", c));
+      } else {
+        current.forEach((c) => newParams.append("category", c));
+        newParams.append("category", cat);
+      }
+      return newParams;
+    });
+  };
+
+  const handleClearCategories = () => {
+    setSearchParams((prev) => {
+      const newParams = new URLSearchParams(prev);
+      newParams.delete("category");
+      return newParams;
+    });
+  };
+
+  // Стили
   const styles = {
     container: {
       width: "100%",
@@ -134,8 +159,15 @@ export default function ProductsPage({
     heading: {
       fontSize: "22px",
       fontWeight: "700",
-      color: "#0f172a",
+      color: "#12153a",
       margin: "8px 0 24px 0",
+    },
+    filterWrapper: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: "8px",
+      marginBottom: "24px",
+      padding: "8px 0",
     },
     grid: {
       display: "grid",
@@ -176,8 +208,40 @@ export default function ProductsPage({
       alignItems: "center",
       justifyContent: "center",
       borderBottom: "1px solid #f1f5f9",
+      position: "relative",
     },
     img: { maxWidth: "100%", maxHeight: "100%", objectFit: "contain" },
+    sliderBtn: {
+      position: "absolute",
+      top: "50%",
+      transform: "translateY(-50%)",
+      width: "28px",
+      height: "28px",
+      borderRadius: "50%",
+      border: "none",
+      backgroundColor: "rgba(15, 23, 42, 0.55)",
+      color: "#fff",
+      cursor: "pointer",
+      zIndex: 2,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontWeight: "700",
+    },
+    sliderLeft: { left: "8px" },
+    sliderRight: { right: "8px" },
+    sliderCounter: {
+      position: "absolute",
+      bottom: "8px",
+      right: "10px",
+      backgroundColor: "rgba(15, 23, 42, 0.65)",
+      color: "#fff",
+      fontSize: "11px",
+      fontWeight: "600",
+      padding: "2px 6px",
+      borderRadius: "8px",
+      zIndex: 2,
+    },
     content: {
       padding: "24px",
       display: "flex",
@@ -198,6 +262,25 @@ export default function ProductsPage({
       flexGrow: 1,
       lineHeight: "1.6",
     },
+    sizesWrap: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: "6px",
+      marginBottom: "14px",
+    },
+    sizeBox: {
+      minWidth: "30px",
+      height: "30px",
+      borderRadius: "8px",
+      backgroundColor: "#4f46e5",
+      color: "#fff",
+      fontWeight: "700",
+      fontSize: "13px",
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "0 8px",
+    },
     price: {
       fontSize: "24px",
       fontWeight: "800",
@@ -210,18 +293,6 @@ export default function ProductsPage({
       color: "#94a3b8",
       textDecoration: "line-through",
       marginRight: "8px",
-    },
-    btnMore: {
-      padding: "14px 36px",
-      fontSize: "15px",
-      fontWeight: "600",
-      color: "#ffffff",
-      backgroundColor: "#4f46e5",
-      border: "none",
-      borderRadius: "12px",
-      cursor: "pointer",
-      marginTop: "20px",
-      boxShadow: "0 4px 14px rgba(79, 70, 229, 0.2)",
     },
     buyBtn: {
       padding: "14px",
@@ -245,7 +316,47 @@ export default function ProductsPage({
       width: "100%",
       marginTop: "12px",
     },
+    empty: {
+      textAlign: "center",
+      padding: "40px 0",
+      fontSize: "18px",
+      color: "#64748b",
+    },
   };
+
+  const allButtonStyle = {
+    padding: "8px 18px",
+    borderRadius: "30px",
+    border: "1px solid #4f46e5",
+    background: selectedCategories.length === 0 ? "#4f46e5" : "#f1f5f9",
+    color: selectedCategories.length === 0 ? "#fff" : "#1e293b",
+    cursor: "pointer",
+    fontWeight: "500",
+    fontSize: "14px",
+    transition: "all 0.2s ease",
+    outline: "none",
+  };
+
+  const filterButtonStyle = (cat) => ({
+    padding: "8px 18px",
+    borderRadius: "30px",
+    border: "1px solid #f7f7f7",
+    background: selectedCategories.includes(cat) ? "#d66d16" : "#f1f5f9",
+    color: selectedCategories.includes(cat) ? "#fff" : "#1e293b",
+    cursor: "pointer",
+    fontWeight: "500",
+    fontSize: "14px",
+    transition: "all 0.2s ease",
+    outline: "none",
+  });
+
+  if (loading) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.empty}>Загрузка товаров...</div>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.container}>
@@ -290,118 +401,164 @@ export default function ProductsPage({
             font-size: 12px !important;
             border-radius: 8px !important;
           }
+          .filter-wrapper {
+            gap: 4px !important;
+            padding: 8px 10px !important;
+          }
+          .filter-btn {
+            font-size: 12px !important;
+            padding: 4px 12px !important;
+          }
         }
       `}</style>
 
       <div className="products-container" style={styles.container}>
-        {discountedOnly && <h2 style={styles.heading}></h2>}
-
-        {!loading && products.length === 0 && (
-          <p
-            style={{ color: "#64748b", textAlign: "center", marginTop: "40px" }}
-          >
-            {discountedOnly
-              ? "Пока нет товаров со скидкой"
-              : "Каталог пока пуст"}
-          </p>
+        {categories.length > 0 && (
+          <div className="filter-wrapper" style={styles.filterWrapper}>
+            <button
+              className="filter-btn"
+              style={allButtonStyle}
+              onClick={handleClearCategories}
+            >
+              Все
+            </button>
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                className="filter-btn"
+                style={filterButtonStyle(cat)}
+                onClick={() => handleCategoryToggle(cat)}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
         )}
 
-        <div className="products-grid" style={styles.grid}>
-          {products.map((p) => {
-            const isInCart = cart.some(
-              (item) => String(item.id) === String(p.id),
-            );
-            const discount = p.discount || 0;
-            const finalPrice = getFinalPrice(p.price, discount);
+        {filteredProducts.length === 0 ? (
+          <div style={styles.empty}>
+            {discountedOnly
+              ? "Нет товаров со скидкой в выбранных категориях"
+              : "Товаров не найдено"}
+          </div>
+        ) : (
+          <div className="products-grid" style={styles.grid}>
+            {filteredProducts.map((p) => {
+              const isInCart = cart.some(
+                (item) => String(item.id) === String(p.id),
+              );
+              const discount = p.discount || 0;
+              const finalPrice = getFinalPrice(p.price, discount);
+              const images = getProductImages(p);
+              const currentImageIndex = imageIndexMap[p.id] || 0;
+              const currentImage =
+                images[currentImageIndex] || "/placeholder.png";
+              const sizes = Array.isArray(p.sizes) ? p.sizes : [];
 
-            return (
-              <div
-                key={p.id}
-                className="product-card"
-                style={{ ...styles.card, cursor: "pointer" }}
-                onClick={() => navigate(`/products/${p.id}`)}
-              >
-                {discount > 0 && <span style={styles.badge}>-{discount}%</span>}
+              return (
                 <div
-                  className="product-img-container"
-                  style={styles.imgContainer}
+                  key={p.id}
+                  className="product-card"
+                  style={{ ...styles.card, cursor: "pointer" }}
+                  onClick={() => navigate(`/products/${p.id}`)}
                 >
-                  <img src={p.image_url} alt={p.title} style={styles.img} />
-                </div>
-                <div className="product-content" style={styles.content}>
-                  <h4 className="product-title" style={styles.title}>
-                    {p.title}
-                  </h4>
-                  <p className="product-desc" style={styles.desc}>
-                    {p.description}
-                  </p>
-                  <div className="product-price" style={styles.price}>
-                    {discount > 0 && (
-                      <span style={styles.oldPrice}>
-                        {formatPrice(p.price)} ₽
-                      </span>
+                  {discount > 0 && (
+                    <span style={styles.badge}>-{discount}%</span>
+                  )}
+                  <div
+                    className="product-img-container"
+                    style={styles.imgContainer}
+                  >
+                    {images.length > 1 && (
+                      <>
+                        <button
+                          style={{ ...styles.sliderBtn, ...styles.sliderLeft }}
+                          onClick={(e) => showPrevImage(p.id, images.length, e)}
+                        >
+                          ‹
+                        </button>
+                        <button
+                          style={{
+                            ...styles.sliderBtn,
+                            ...styles.sliderRight,
+                          }}
+                          onClick={(e) => showNextImage(p.id, images.length, e)}
+                        >
+                          ›
+                        </button>
+                        <span style={styles.sliderCounter}>
+                          {currentImageIndex + 1}/{images.length}
+                        </span>
+                      </>
                     )}
-                    {formatPrice(finalPrice)} ₽
+                    <img src={currentImage} alt={p.title} style={styles.img} />
                   </div>
+                  <div className="product-content" style={styles.content}>
+                    <h4 className="product-title" style={styles.title}>
+                      {p.title}
+                    </h4>
+                    <p className="product-desc" style={styles.desc}>
+                      {p.description}
+                    </p>
 
-                  {token && (
-                    <button
-                      className="product-buy-btn"
-                      style={{
-                        ...styles.buyBtn,
-                        backgroundColor: isInCart ? "#64748b" : "#10b981",
-                        cursor: isInCart ? "default" : "pointer",
-                        boxShadow: isInCart
-                          ? "none"
-                          : "0 4px 12px rgba(16, 185, 129, 0.15)",
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (!isInCart) addToCart(p);
-                      }}
-                      disabled={isInCart}
-                    >
-                      {isInCart ? "✓ В корзине" : "🛒 В корзину"}
-                    </button>
-                  )}
+                    {sizes.length > 0 && (
+                      <div style={styles.sizesWrap}>
+                        {sizes.map((size) => (
+                          <span key={`${p.id}-${size}`} style={styles.sizeBox}>
+                            {size}
+                          </span>
+                        ))}
+                      </div>
+                    )}
 
-                  {token && userRole === "admin" && (
-                    <button
-                      className="product-delete-btn"
-                      style={styles.deleteBtn}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteProduct(p.id);
-                      }}
-                    >
-                      🗑️ Удалить
-                    </button>
-                  )}
+                    <div className="product-price" style={styles.price}>
+                      {discount > 0 && (
+                        <span style={styles.oldPrice}>
+                          {formatPrice(p.price)} ₽
+                        </span>
+                      )}
+                      {formatPrice(finalPrice)} ₽
+                    </div>
+
+                    {token && (
+                      <button
+                        className="product-buy-btn"
+                        style={{
+                          ...styles.buyBtn,
+                          backgroundColor: isInCart ? "#64748b" : "#10b981",
+                          cursor: isInCart ? "default" : "pointer",
+                          boxShadow: isInCart
+                            ? "none"
+                            : "0 4px 12px rgba(16, 185, 129, 0.15)",
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!isInCart) addToCart(p);
+                        }}
+                        disabled={isInCart}
+                      >
+                        {isInCart ? "✓ В корзине" : "🛒 В корзину"}
+                      </button>
+                    )}
+
+                    {token && userRole === "admin" && (
+                      <button
+                        className="product-delete-btn"
+                        style={styles.deleteBtn}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteProduct(p.id);
+                        }}
+                      >
+                        🗑️ Удалить
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div style={{ textAlign: "center", paddingBottom: "80px" }}>
-          {hasMore ? (
-            <button
-              style={styles.btnMore}
-              onClick={loadMoreProducts}
-              disabled={loading}
-            >
-              {loading ? "Загрузка..." : "Показать еще товары"}
-            </button>
-          ) : (
-            <p
-              style={{
-                color: "#64748b",
-                fontStyle: "italic",
-                marginTop: "40px",
-              }}
-            ></p>
-          )}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

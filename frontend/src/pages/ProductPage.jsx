@@ -19,7 +19,7 @@ const styles = {
     maxHeight: "400px",
     backgroundColor: "#ffffff",
     borderRadius: "20px",
-    
+
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -28,6 +28,7 @@ const styles = {
     border: "1px solid #f1f5f9",
     padding: "16px",
     boxSizing: "border-box",
+    position: "relative",
   },
   image: {
     maxWidth: "100%",
@@ -69,6 +70,36 @@ const styles = {
     lineHeight: "1.7",
     color: "#475569",
     marginBottom: "20px",
+  },
+  metaRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "8px",
+    marginBottom: "16px",
+  },
+  chip: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: "999px",
+    padding: "4px 10px",
+    fontSize: "12px",
+    fontWeight: "600",
+    backgroundColor: "#eef2ff",
+    color: "#3730a3",
+  },
+  sizeBox: {
+    minWidth: "34px",
+    height: "34px",
+    borderRadius: "10px",
+    backgroundColor: "#4f46e5",
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: "14px",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "0 8px",
   },
   fullDescription: {
     fontSize: "15px",
@@ -197,10 +228,13 @@ export default function ProductPage({
   const [error, setError] = useState(null);
   const [isJustAdded, setIsJustAdded] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [imageIndex, setImageIndex] = useState(0);
   const [editPrice, setEditPrice] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editFullDescription, setEditFullDescription] = useState("");
   const [editDiscount, setEditDiscount] = useState("0");
+  const [editCategories, setEditCategories] = useState("");
+  const [editSizes, setEditSizes] = useState("");
   const [editMsg, setEditMsg] = useState({ text: "", isError: false });
   const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
@@ -229,23 +263,23 @@ export default function ProductPage({
 
         if (!isMounted) return;
 
-        // #region agent log
-        fetch('http://127.0.0.1:7387/ingest/6c7cf841-34a1-48fd-8972-fd7dd2a3fdc7',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f641e'},body:JSON.stringify({sessionId:'3f641e',runId:'post-fix',hypothesisId:'A,B,C',location:'ProductPage.jsx:fetchProduct',message:'product by id response',data:{productId,status:response.status,ok:response.ok,dataType:Array.isArray(data)?'array':typeof data,isArray:Array.isArray(data),keys:data&&typeof data==='object'&&!Array.isArray(data)?Object.keys(data):null,arrayLen:Array.isArray(data)?data.length:null,title:data?.title,price:data?.price,image_url:data?.image_url,discount:data?.discount,rawPreview:Array.isArray(data)?data.slice(0,3):null},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-
         if (response.ok) {
           setProduct(data);
+          setImageIndex(0);
           setEditPrice(String(data.price ?? ""));
           setEditDescription(data.description || "");
           setEditFullDescription(data.full_description || "");
           setEditDiscount(String(data.discount ?? 0));
+          setEditCategories(
+            (Array.isArray(data.categories) ? data.categories : []).join(", "),
+          );
+          setEditSizes(
+            (Array.isArray(data.sizes) ? data.sizes : []).join(", "),
+          );
         } else {
           setError(data.detail || "Товар не найден");
         }
       } catch (err) {
-        // #region agent log
-        fetch('http://127.0.0.1:7387/ingest/6c7cf841-34a1-48fd-8972-fd7dd2a3fdc7',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f641e'},body:JSON.stringify({sessionId:'3f641e',runId:'post-fix',hypothesisId:'B',location:'ProductPage.jsx:fetchProduct:catch',message:'product fetch threw',data:{productId,error:String(err)},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         if (isMounted) setError("Ошибка загрузки товара");
       } finally {
         if (isMounted) setLoading(false);
@@ -266,12 +300,24 @@ export default function ProductPage({
   const price = product?.price;
   const description = product?.description;
   const imageUrl = product?.image_url || product?.imageUrl;
-  const fullDescription =
-    product?.full_description || product?.fullDescription;
+  const fullDescription = product?.full_description || product?.fullDescription;
   const discount = product?.discount || 0;
   const finalPrice = getFinalPrice(price, discount);
-
-  const finalImageUrl = imageUrl || "/placeholder.png";
+  const categories = Array.isArray(product?.categories)
+    ? product.categories
+    : [];
+  const sizes = Array.isArray(product?.sizes) ? product.sizes : [];
+  const imageUrls =
+    Array.isArray(product?.image_urls) && product.image_urls.length > 0
+      ? product.image_urls
+      : imageUrl
+        ? [imageUrl]
+        : ["/placeholder.png"];
+  const safeImageIndex = Math.min(
+    imageIndex,
+    Math.max(imageUrls.length - 1, 0),
+  );
+  const finalImageUrl = imageUrls[safeImageIndex] || "/placeholder.png";
 
   const isInCart = id
     ? cartItems.some((item) => String(item.id) === String(id))
@@ -305,6 +351,17 @@ export default function ProductPage({
     setSaving(true);
     setEditMsg({ text: "", isError: false });
     try {
+      const parsedCategories = editCategories
+        .split(",")
+        .map((c) => c.trim())
+        .filter(Boolean);
+      const parsedSizes = editSizes
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map(Number)
+        .filter((n) => Number.isFinite(n));
+
       const response = await fetch(`${API_URL}/products/${id}`, {
         method: "PATCH",
         headers: {
@@ -316,6 +373,8 @@ export default function ProductPage({
           description: editDescription,
           full_description: editFullDescription,
           discount: Number(editDiscount),
+          categories: parsedCategories,
+          sizes: parsedSizes,
         }),
       });
       const data = await response.json();
@@ -326,6 +385,8 @@ export default function ProductPage({
           description: editDescription,
           full_description: editFullDescription,
           discount: Number(editDiscount),
+          categories: parsedCategories,
+          sizes: parsedSizes,
         }));
         setEditMsg({ text: "Товар обновлён", isError: false });
         setEditing(false);
@@ -355,6 +416,14 @@ export default function ProductPage({
 
   const handleGoToDrive = () => {
     navigate("/how-to-drive");
+  };
+
+  const showPrevImage = () => {
+    setImageIndex((prev) => (prev - 1 + imageUrls.length) % imageUrls.length);
+  };
+
+  const showNextImage = () => {
+    setImageIndex((prev) => (prev + 1) % imageUrls.length);
   };
 
   if (loading) {
@@ -438,6 +507,66 @@ export default function ProductPage({
       </div>
 
       <div style={imageContainerStyle}>
+        {imageUrls.length > 1 && (
+          <>
+            <button
+              onClick={showPrevImage}
+              style={{
+                position: "absolute",
+                left: "12px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                width: "34px",
+                height: "34px",
+                borderRadius: "50%",
+                border: "none",
+                backgroundColor: "rgba(15, 23, 42, 0.55)",
+                color: "#fff",
+                cursor: "pointer",
+                fontWeight: "700",
+                zIndex: 2,
+              }}
+            >
+              ‹
+            </button>
+            <button
+              onClick={showNextImage}
+              style={{
+                position: "absolute",
+                right: "12px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                width: "34px",
+                height: "34px",
+                borderRadius: "50%",
+                border: "none",
+                backgroundColor: "rgba(15, 23, 42, 0.55)",
+                color: "#fff",
+                cursor: "pointer",
+                fontWeight: "700",
+                zIndex: 2,
+              }}
+            >
+              ›
+            </button>
+            <span
+              style={{
+                position: "absolute",
+                right: "14px",
+                bottom: "12px",
+                backgroundColor: "rgba(15, 23, 42, 0.65)",
+                color: "#fff",
+                fontSize: "12px",
+                fontWeight: "600",
+                borderRadius: "8px",
+                padding: "2px 8px",
+                zIndex: 2,
+              }}
+            >
+              {safeImageIndex + 1}/{imageUrls.length}
+            </span>
+          </>
+        )}
         <img
           src={finalImageUrl}
           alt={title || "Товар"}
@@ -461,6 +590,21 @@ export default function ProductPage({
       </div>
 
       <div style={styles.description}>{description || ""}</div>
+
+      {(categories.length > 0 || sizes.length > 0) && (
+        <div style={styles.metaRow}>
+          {categories.map((cat) => (
+            <span key={cat} style={styles.chip}>
+              {cat}
+            </span>
+          ))}
+          {sizes.map((size) => (
+            <span key={`size-${size}`} style={styles.sizeBox}>
+              {size}
+            </span>
+          ))}
+        </div>
+      )}
 
       {fullDescription && (
         <div style={styles.fullDescription}>
@@ -491,11 +635,7 @@ export default function ProductPage({
               })
             }
           >
-            {isInCart
-              ? "В корзине"
-              : isJustAdded
-                ? "Добавлено!"
-                : "В корзину"}
+            {isInCart ? "В корзине" : isJustAdded ? "Добавлено!" : "В корзину"}
           </button>
         )}
 
@@ -577,6 +717,24 @@ export default function ProductPage({
             style={{ ...styles.textarea, minHeight: "150px" }}
             value={editFullDescription}
             onChange={(e) => setEditFullDescription(e.target.value)}
+          />
+
+          <label style={styles.label}>Категории (через запятую)</label>
+          <input
+            type="text"
+            style={styles.input}
+            value={editCategories}
+            onChange={(e) => setEditCategories(e.target.value)}
+            placeholder="Кроссовки, Спорт"
+          />
+
+          <label style={styles.label}>Размеры (через запятую)</label>
+          <input
+            type="text"
+            style={styles.input}
+            value={editSizes}
+            onChange={(e) => setEditSizes(e.target.value)}
+            placeholder="36, 37, 38"
           />
 
           <button

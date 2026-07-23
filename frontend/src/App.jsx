@@ -12,6 +12,7 @@ import UserNotesPage from "./pages/UserNotesPage.jsx";
 import NoteDetailPage from "./pages/NoteDetailPage.jsx";
 import ProductPage from "./pages/ProductPage";
 import HowToDrivePage from "./pages/HowToDrivePage";
+// import Catalog from "./pages/Catalog"; // удалили
 
 export default function App() {
   const API_URL = "/api";
@@ -99,7 +100,7 @@ export default function App() {
     <div
       style={{
         background:
-          "linear-gradient(135deg, #f5f7ff 0%, #ffffff 50%, #f0fdf4 100%)",
+          "linear-gradient(135deg, #d3eaf5 0%, #faf4f4 50%, #f2f2e1 100%)",
         minHeight: "100vh",
         boxSizing: "border-box",
       }}
@@ -111,9 +112,8 @@ export default function App() {
         handleLogout={handleLogout}
       />
 
-      {/* Сетка страниц */}
       <Routes>
-        {/* ГЛАВНАЯ СТРАНИЦА*/}
+        {/* ГЛАВНАЯ СТРАНИЦА – теперь только один маршрут */}
         <Route
           path="/"
           element={
@@ -139,6 +139,7 @@ export default function App() {
             />
           }
         />
+
         <Route path="/notes" element={<UserNotesPage API_URL={API_URL} />} />
         <Route path="/how-to-drive" element={<HowToDrivePage />} />
         <Route
@@ -195,7 +196,6 @@ export default function App() {
           }
         />
 
-        {/* --- ДОБАВИЛИ РОУТ УПРАВЛЕНИЯ ЗАМЕТКАМИ ДЛЯ АДМИНА --- */}
         <Route
           path="/admin/notes"
           element={
