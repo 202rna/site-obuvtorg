@@ -1,8 +1,10 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import styles from "./Navigation.module.css";
 import logoImg from "../assets/logo-no-bg.png";
 import discountBadge from "../assets/discount-badge.png";
-import catalogLogo from "../assets/catalog_logo.png"; // 👈 импорт картинки для "Каталог"
+import discountBadgeClick from "../assets/discount_click.png"; // активная версия для Акции
+import catalogLogo from "../assets/catalog_logo.png";
+import catalogLogoClick from "../assets/catalog_logo_click.png";
 
 export default function Navigation({
   token,
@@ -10,6 +12,10 @@ export default function Navigation({
   cartCount,
   handleLogout,
 }) {
+  const location = useLocation();
+  const isCatalog = location.pathname === "/";
+  const isDiscount = location.pathname === "/discount";
+
   return (
     <nav className={styles.nav}>
       {/* Верхняя строка: логотип + контакты */}
@@ -63,23 +69,24 @@ export default function Navigation({
       {/* Нижняя строка: ссылки + кнопка */}
       <div className={styles.bottomRow}>
         <div className={styles.links}>
-          {/* 👇 Заменяем текст "Каталог" на картинку */}
+          {/* Каталог — картинка меняется на активную */}
           <Link to="/" className={styles.activeLink}>
             <img
-              src={catalogLogo}
+              src={isCatalog ? catalogLogoClick : catalogLogo}
               alt="Каталог"
               style={{
                 display: "block",
-                height: "48px", // подберите нужный размер
+                height: "48px",
                 width: "auto",
                 objectFit: "contain",
               }}
             />
           </Link>
 
+          {/* Акция — картинка меняется на активную */}
           <Link to="/discount" className={styles.link}>
             <img
-              src={discountBadge}
+              src={isDiscount ? discountBadgeClick : discountBadge}
               alt="Выгодно"
               style={{
                 display: "block",
