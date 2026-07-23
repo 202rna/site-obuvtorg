@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import styles from "./Navigation.module.css";
 import logoImg from "../assets/logo-no-bg.png";
 import discountBadge from "../assets/discount-badge.png";
-import discountBadgeClick from "../assets/discount_click.png"; // активная версия для Акции
+import discountBadgeClick from "../assets/discount_click.png";
 import catalogLogo from "../assets/catalog_logo.png";
 import catalogLogoClick from "../assets/catalog_logo_click.png";
 
@@ -69,29 +69,55 @@ export default function Navigation({
       {/* Нижняя строка: ссылки + кнопка */}
       <div className={styles.bottomRow}>
         <div className={styles.links}>
-          {/* Каталог — картинка меняется на активную */}
-          <Link to="/" className={styles.activeLink}>
+          {/* Каталог */}
+          <Link
+            to="/"
+            className={styles.activeLink}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "90px", // фиксированная ширина
+              height: "52px",
+              padding: "0 8px",
+            }}
+          >
             <img
               src={isCatalog ? catalogLogoClick : catalogLogo}
               alt="Каталог"
               style={{
                 display: "block",
-                height: "48px",
+                maxHeight: "48px",
+                maxWidth: "100%",
                 width: "auto",
+                height: "auto",
                 objectFit: "contain",
               }}
             />
           </Link>
 
-          {/* Акция — картинка меняется на активную */}
-          <Link to="/discount" className={styles.link}>
+          {/* Акция */}
+          <Link
+            to="/discount"
+            className={styles.link}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "90px", // фиксированная ширина
+              height: "52px",
+              padding: "0 8px",
+            }}
+          >
             <img
               src={isDiscount ? discountBadgeClick : discountBadge}
               alt="Выгодно"
               style={{
                 display: "block",
-                height: "28px",
+                maxHeight: "28px",
+                maxWidth: "100%",
                 width: "auto",
+                height: "auto",
                 objectFit: "contain",
               }}
             />
