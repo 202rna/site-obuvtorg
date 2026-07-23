@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { getFinalPrice, formatPrice } from "../utils/price";
 
@@ -18,6 +18,34 @@ export default function ProductsPage({
   const [products, setProducts] = useState([]);
   const [imageIndexMap, setImageIndexMap] = useState({});
   const [loading, setLoading] = useState(true);
+
+  // ------ Для свайпа ------
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
+
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.changedTouches[0].screenX;
+  };
+
+  const handleTouchEnd = (productId, imagesLength) => (e) => {
+    touchEndX.current = e.changedTouches[0].screenX;
+    handleSwipe(productId, imagesLength);
+  };
+
+  const handleSwipe = (productId, imagesLength) => {
+    const diff = touchStartX.current - touchEndX.current;
+    const minSwipeDistance = 50; // минимальное расстояние для свайпа
+    if (Math.abs(diff) < minSwipeDistance) return;
+
+    if (diff > 0) {
+      // свайп влево → следующее изображение
+      showNextImage(productId, imagesLength, null);
+    } else {
+      // свайп вправо → предыдущее
+      showPrevImage(productId, imagesLength, null);
+    }
+  };
+  // --------------------------
 
   useEffect(() => {
     async function loadAllProducts() {
@@ -50,7 +78,7 @@ export default function ProductsPage({
   }
 
   function showPrevImage(productId, imageCount, e) {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     setImageIndexMap((prev) => {
       const current = prev[productId] || 0;
       const next = (current - 1 + imageCount) % imageCount;
@@ -59,7 +87,7 @@ export default function ProductsPage({
   }
 
   function showNextImage(productId, imageCount, e) {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     setImageIndexMap((prev) => {
       const current = prev[productId] || 0;
       const next = (current + 1) % imageCount;
@@ -92,24 +120,17 @@ export default function ProductsPage({
     return products.filter((p) => (p.discount || 0) > 0);
   }, [products, discountedOnly]);
 
-  // --- Уникальные категории с закреплёнными в начале ---
   const categories = useMemo(() => {
     const allCats = discountFiltered.flatMap((p) => p.categories || []);
     const unique = [...new Set(allCats)];
-
-    // Список приоритетных категорий (в нужном порядке)
     const priority = ["для детей", "мужская", "женская"];
-
-    // Разделяем на приоритетные и остальные
     const priorityCats = priority.filter((cat) => unique.includes(cat));
     const otherCats = unique
       .filter((cat) => !priority.includes(cat))
       .sort((a, b) => a.localeCompare(b));
-
     return [...priorityCats, ...otherCats];
   }, [discountFiltered]);
 
-  // --- Фильтр h2ов по выбранным категориям ---
   const filteredProducts = useMemo(() => {
     if (selectedCategories.length === 0) return discountFiltered;
     return discountFiltered.filter(
@@ -119,7 +140,6 @@ export default function ProductsPage({
     );
   }, [discountFiltered, selectedCategories]);
 
-  // --- Обработчики ---
   const handleCategoryToggle = (cat) => {
     setSearchParams((prev) => {
       const newParams = new URLSearchParams(prev);
@@ -209,6 +229,7 @@ export default function ProductsPage({
       justifyContent: "center",
       borderBottom: "1px solid #f1f5f9",
       position: "relative",
+      touchAction: "pan-y", // разрешаем вертикальный скролл, но ловим горизонтальный свайп
     },
     img: { maxWidth: "100%", maxHeight: "100%", objectFit: "contain" },
     sliderBtn: {
@@ -262,25 +283,7 @@ export default function ProductsPage({
       flexGrow: 1,
       lineHeight: "1.6",
     },
-    sizesWrap: {
-      display: "flex",
-      flexWrap: "wrap",
-      gap: "6px",
-      marginBottom: "14px",
-    },
-    sizeBox: {
-      minWidth: "30px",
-      height: "30px",
-      borderRadius: "8px",
-      backgroundColor: "#4f46e5",
-      color: "#fff",
-      fontWeight: "700",
-      fontSize: "13px",
-      display: "inline-flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "0 8px",
-    },
+    // sizesWrap и sizeBox удалены, так как размеры убраны
     price: {
       fontSize: "24px",
       fontWeight: "800",
@@ -413,6 +416,8 @@ export default function ProductsPage({
       `}</style>
 
       <div className="products-container" style={styles.container}>
+        {discountedOnly && <h2 style={styles.heading}>Товары со скидкой</h2>}
+
         {categories.length > 0 && (
           <div className="filter-wrapper" style={styles.filterWrapper}>
             <button
@@ -453,7 +458,6 @@ export default function ProductsPage({
               const currentImageIndex = imageIndexMap[p.id] || 0;
               const currentImage =
                 images[currentImageIndex] || "/placeholder.png";
-              const sizes = Array.isArray(p.sizes) ? p.sizes : [];
 
               return (
                 <div
@@ -468,6 +472,8 @@ export default function ProductsPage({
                   <div
                     className="product-img-container"
                     style={styles.imgContainer}
+                    onTouchStart={handleTouchStart}
+                    onTouchEnd={handleTouchEnd(p.id, images.length)}
                   >
                     {images.length > 1 && (
                       <>
@@ -501,15 +507,7 @@ export default function ProductsPage({
                       {p.description}
                     </p>
 
-                    {sizes.length > 0 && (
-                      <div style={styles.sizesWrap}>
-                        {sizes.map((size) => (
-                          <span key={`${p.id}-${size}`} style={styles.sizeBox}>
-                            {size}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                    {/* Блок размеров УДАЛЁН */}
 
                     <div className="product-price" style={styles.price}>
                       {discount > 0 && (

@@ -194,7 +194,7 @@ export default function AdminPage({ API_URL, token }) {
           style={styles.input}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Название товара"
+          placeholder="Название товара (Марка / Производитель)"
         />
 
         <input
@@ -220,7 +220,7 @@ export default function AdminPage({ API_URL, token }) {
           style={styles.input}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Краткое описание товара (Марка / Производитель)"
+          placeholder="Краткое описание товара"
         />
 
         <input

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { marked } from "marked";
 import { getFinalPrice, formatPrice } from "../utils/price";
@@ -19,7 +19,6 @@ const styles = {
     maxHeight: "400px",
     backgroundColor: "#ffffff",
     borderRadius: "20px",
-
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -29,6 +28,7 @@ const styles = {
     padding: "16px",
     boxSizing: "border-box",
     position: "relative",
+    touchAction: "pan-y", // для корректной работы свайпа
   },
   image: {
     maxWidth: "100%",
@@ -71,11 +71,25 @@ const styles = {
     color: "#475569",
     marginBottom: "20px",
   },
-  metaRow: {
+  sizesRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "8px",
+    marginBottom: "10px",
+    alignItems: "center",
+  },
+  categoriesRow: {
     display: "flex",
     flexWrap: "wrap",
     gap: "8px",
     marginBottom: "16px",
+    alignItems: "center",
+  },
+  tagLabel: {
+    fontSize: "14px",
+    fontWeight: "600",
+    color: "#64748b",
+    marginRight: "6px",
   },
   chip: {
     display: "inline-flex",
@@ -238,6 +252,30 @@ export default function ProductPage({
   const [editMsg, setEditMsg] = useState({ text: "", isError: false });
   const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
+
+  // ------ Для свайпа ------
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
+
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.changedTouches[0].screenX;
+  };
+
+  const handleTouchEnd = () => {
+    touchEndX.current = window.event?.changedTouches?.[0]?.screenX || 0;
+    const diff = touchStartX.current - touchEndX.current;
+    const minSwipeDistance = 50;
+    if (Math.abs(diff) < minSwipeDistance) return;
+
+    if (diff > 0) {
+      // свайп влево → следующее изображение
+      showNextImage();
+    } else {
+      // свайп вправо → предыдущее
+      showPrevImage();
+    }
+  };
+  // --------------------------
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
 
@@ -506,7 +544,11 @@ export default function ProductPage({
         ← Назад к списку
       </div>
 
-      <div style={imageContainerStyle}>
+      <div
+        style={imageContainerStyle}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         {imageUrls.length > 1 && (
           <>
             <button
@@ -591,16 +633,22 @@ export default function ProductPage({
 
       <div style={styles.description}>{description || ""}</div>
 
-      {(categories.length > 0 || sizes.length > 0) && (
-        <div style={styles.metaRow}>
-          {categories.map((cat) => (
-            <span key={cat} style={styles.chip}>
-              {cat}
-            </span>
-          ))}
+      {sizes.length > 0 && (
+        <div style={styles.sizesRow}>
+          <span style={styles.tagLabel}>Размеры:</span>
           {sizes.map((size) => (
             <span key={`size-${size}`} style={styles.sizeBox}>
               {size}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {categories.length > 0 && (
+        <div style={styles.categoriesRow}>
+          {categories.map((cat) => (
+            <span key={cat} style={styles.chip}>
+              {cat}
             </span>
           ))}
         </div>
