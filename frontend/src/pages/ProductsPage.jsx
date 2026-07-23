@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { getFinalPrice, formatPrice } from "../utils/price";
 
@@ -16,36 +16,7 @@ export default function ProductsPage({
   const selectedCategories = searchParams.getAll("category");
 
   const [products, setProducts] = useState([]);
-  const [imageIndexMap, setImageIndexMap] = useState({});
   const [loading, setLoading] = useState(true);
-
-  // ------ Для свайпа ------
-  const touchStartX = useRef(0);
-  const touchEndX = useRef(0);
-
-  const handleTouchStart = (e) => {
-    touchStartX.current = e.changedTouches[0].screenX;
-  };
-
-  const handleTouchEnd = (productId, imagesLength) => (e) => {
-    touchEndX.current = e.changedTouches[0].screenX;
-    handleSwipe(productId, imagesLength);
-  };
-
-  const handleSwipe = (productId, imagesLength) => {
-    const diff = touchStartX.current - touchEndX.current;
-    const minSwipeDistance = 50; // минимальное расстояние для свайпа
-    if (Math.abs(diff) < minSwipeDistance) return;
-
-    if (diff > 0) {
-      // свайп влево → следующее изображение
-      showNextImage(productId, imagesLength, null);
-    } else {
-      // свайп вправо → предыдущее
-      showPrevImage(productId, imagesLength, null);
-    }
-  };
-  // --------------------------
 
   useEffect(() => {
     async function loadAllProducts() {
@@ -75,24 +46,6 @@ export default function ProductsPage({
     if (fromArray.length > 0) return fromArray;
     if (product.image_url) return [product.image_url];
     return ["/placeholder.png"];
-  }
-
-  function showPrevImage(productId, imageCount, e) {
-    if (e) e.stopPropagation();
-    setImageIndexMap((prev) => {
-      const current = prev[productId] || 0;
-      const next = (current - 1 + imageCount) % imageCount;
-      return { ...prev, [productId]: next };
-    });
-  }
-
-  function showNextImage(productId, imageCount, e) {
-    if (e) e.stopPropagation();
-    setImageIndexMap((prev) => {
-      const current = prev[productId] || 0;
-      const next = (current + 1) % imageCount;
-      return { ...prev, [productId]: next };
-    });
   }
 
   async function handleDeleteProduct(productId) {
@@ -205,6 +158,7 @@ export default function ProductsPage({
       display: "flex",
       flexDirection: "column",
       position: "relative",
+      cursor: "pointer",
     },
     badge: {
       position: "absolute",
@@ -228,41 +182,8 @@ export default function ProductsPage({
       alignItems: "center",
       justifyContent: "center",
       borderBottom: "1px solid #f1f5f9",
-      position: "relative",
-      touchAction: "pan-y", // разрешаем вертикальный скролл, но ловим горизонтальный свайп
     },
     img: { maxWidth: "100%", maxHeight: "100%", objectFit: "contain" },
-    sliderBtn: {
-      position: "absolute",
-      top: "50%",
-      transform: "translateY(-50%)",
-      width: "28px",
-      height: "28px",
-      borderRadius: "50%",
-      border: "none",
-      backgroundColor: "rgba(15, 23, 42, 0.55)",
-      color: "#fff",
-      cursor: "pointer",
-      zIndex: 2,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      fontWeight: "700",
-    },
-    sliderLeft: { left: "8px" },
-    sliderRight: { right: "8px" },
-    sliderCounter: {
-      position: "absolute",
-      bottom: "8px",
-      right: "10px",
-      backgroundColor: "rgba(15, 23, 42, 0.65)",
-      color: "#fff",
-      fontSize: "11px",
-      fontWeight: "600",
-      padding: "2px 6px",
-      borderRadius: "8px",
-      zIndex: 2,
-    },
     content: {
       padding: "24px",
       display: "flex",
@@ -283,7 +204,6 @@ export default function ProductsPage({
       flexGrow: 1,
       lineHeight: "1.6",
     },
-    // sizesWrap и sizeBox удалены, так как размеры убраны
     price: {
       fontSize: "24px",
       fontWeight: "800",
@@ -405,19 +325,18 @@ export default function ProductsPage({
             border-radius: 8px !important;
           }
           .filter-wrapper {
-            gap: 4px !important;
+            gap: 6px !important;
             padding: 8px 10px !important;
           }
           .filter-btn {
-            font-size: 12px !important;
-            padding: 4px 12px !important;
+            font-size: 16px !important;   /* Увеличили шрифт */
+            padding: 10px 20px !important; /* Увеличили отступы для удобного тапа */
+            border-radius: 30px !important;
           }
         }
       `}</style>
 
       <div className="products-container" style={styles.container}>
-        {discountedOnly && <h2 style={styles.heading}>Товары со скидкой</h2>}
-
         {categories.length > 0 && (
           <div className="filter-wrapper" style={styles.filterWrapper}>
             <button
@@ -455,15 +374,13 @@ export default function ProductsPage({
               const discount = p.discount || 0;
               const finalPrice = getFinalPrice(p.price, discount);
               const images = getProductImages(p);
-              const currentImageIndex = imageIndexMap[p.id] || 0;
-              const currentImage =
-                images[currentImageIndex] || "/placeholder.png";
+              const firstImage = images[0] || "/placeholder.png";
 
               return (
                 <div
                   key={p.id}
                   className="product-card"
-                  style={{ ...styles.card, cursor: "pointer" }}
+                  style={styles.card}
                   onClick={() => navigate(`/products/${p.id}`)}
                 >
                   {discount > 0 && (
@@ -472,32 +389,8 @@ export default function ProductsPage({
                   <div
                     className="product-img-container"
                     style={styles.imgContainer}
-                    onTouchStart={handleTouchStart}
-                    onTouchEnd={handleTouchEnd(p.id, images.length)}
                   >
-                    {images.length > 1 && (
-                      <>
-                        <button
-                          style={{ ...styles.sliderBtn, ...styles.sliderLeft }}
-                          onClick={(e) => showPrevImage(p.id, images.length, e)}
-                        >
-                          ‹
-                        </button>
-                        <button
-                          style={{
-                            ...styles.sliderBtn,
-                            ...styles.sliderRight,
-                          }}
-                          onClick={(e) => showNextImage(p.id, images.length, e)}
-                        >
-                          ›
-                        </button>
-                        <span style={styles.sliderCounter}>
-                          {currentImageIndex + 1}/{images.length}
-                        </span>
-                      </>
-                    )}
-                    <img src={currentImage} alt={p.title} style={styles.img} />
+                    <img src={firstImage} alt={p.title} style={styles.img} />
                   </div>
                   <div className="product-content" style={styles.content}>
                     <h4 className="product-title" style={styles.title}>
@@ -506,8 +399,6 @@ export default function ProductsPage({
                     <p className="product-desc" style={styles.desc}>
                       {p.description}
                     </p>
-
-                    {/* Блок размеров УДАЛЁН */}
 
                     <div className="product-price" style={styles.price}>
                       {discount > 0 && (
