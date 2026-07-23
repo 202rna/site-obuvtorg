@@ -2,7 +2,7 @@ from app.domain.ports import ProductRepositoryPort
 
 
 class MoveProductToDiscount:
-    """Помечает товар как уценённый (устанавливает discount > 0)."""
+    """Помечает товар как со скидкой (устанавливает discount > 0)."""
 
     def __init__(self, product_repo: ProductRepositoryPort):
         self.product_repo = product_repo

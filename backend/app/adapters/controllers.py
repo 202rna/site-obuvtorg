@@ -215,8 +215,8 @@ def create_user_router(
         discount: int = Form(0),
     ):
         """Принимает описание товара от пользователя. Регирует товар в бд и 
-        сохраняет его в локальное статическое хранинилище
-    
+        сохраняет его в локальное статическое хранинилище.
+
         Args:
             title (str, optional): Название.
             price (float, optional): Цена.
@@ -291,10 +291,7 @@ def create_user_router(
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-        except HTTPException:
-            raise
         except Exception as e:
-            print(f"Ошибка обновления товара: {e}")
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ошибка обновления товара")
 
     
@@ -409,6 +406,21 @@ def create_user_router(
         file: UploadFile = File(None),
         current_user: User = Depends(get_current_user)
     ):
+        """Содание заметки (note)
+
+        Args:
+            title (str, optional): Название/Заголовок. Defaults to Form(...).
+            description (str, optional): Содержание основное. Defaults to Form(...).
+            file (UploadFile, optional): Изображение. Defaults to File(None).
+            current_user (User, optional): Текущий пользователь. Defaults to Depends(get_current_user).
+
+        Raises:
+            HTTPException: HTTP_403_FORBIDDEN недостаточно прав.
+            HTTPException: HTTP_500_INTERNAL_SERVER_ERROR
+
+        Returns:
+            bool: Статус операции.
+        """        
         try:
             image_url = None
             if file and file.filename:

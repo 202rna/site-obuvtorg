@@ -51,7 +51,7 @@ class TokenProviderPort(ABC):
 
 
 class MissingType:
-    """Класс-заглушка: отличить «поле стерли» от «поле не передали»."""
+    """Класс-заглушка:  «поле стерли» None / «поле не передали» Missing."""
     pass
 
 
@@ -89,7 +89,7 @@ class ProductRepositoryPort(ABC):
     async def get_by_id(self, product_id: int) -> dict | None:
         pass
 
-    
+
 class CartRepositoryPort(ABC):
     """Интерфейс управления корзиной в базе данных."""
     @abstractmethod

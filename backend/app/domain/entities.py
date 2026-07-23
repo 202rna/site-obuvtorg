@@ -14,8 +14,7 @@ class User:
 
 @dataclass
 class Order:
-    """Сущность товара
-    """
+    """Сущность товара"""
     id: Optional[int] = None
     title: str = ""
     price: float = 0.0
