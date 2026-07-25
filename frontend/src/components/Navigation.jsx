@@ -1,8 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
 import styles from "./Navigation.module.css";
 import logoImg from "../assets/logo-no-bg.png";
-import discountBadge from "../assets/discount-badge.png";
-import discountBadgeClick from "../assets/discount_click.png";
+import saleImg from "../assets/sale.png";
+import saleImgClick from "../assets/sale_click.png";
 import catalogLogo from "../assets/catalog_logo.png";
 import catalogLogoClick from "../assets/catalog_logo_click.png";
 import newsImg from "../assets/news.png";
@@ -113,11 +113,11 @@ export default function Navigation({
             }}
           >
             <img
-              src={isDiscount ? discountBadgeClick : discountBadge}
-              alt="Выгодно"
+              src={isDiscount ? saleImgClick : saleImg}
+              alt="Акция"
               style={{
                 display: "block",
-                maxHeight: "28px",
+                maxHeight: "38px",
                 maxWidth: "100%",
                 width: "auto",
                 height: "auto",
