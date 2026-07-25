@@ -8,7 +8,7 @@ from app.infrastructure.crypto import BcryptPasswordHasher
 from app.infrastructure.jwt_provider import JwtTokenProvider
 
 from app.adapters.repositories import PostgresUserRepository, PostgresProductRepository, PostgresCartRepository, PostgresNoteRepository
-from app.adapters.controllers import create_user_router
+from app.adapters.controllers import create_user_router, create_sitemap_router
 
 from app.domain.usecases.users.register_use_cases import RegisterUserUseCase
 from app.domain.usecases.users.login_use_case import LoginUserUseCase
@@ -107,3 +107,6 @@ user_router = create_user_router(
 )
 
 app.include_router(user_router, prefix="/api")
+
+sitemap_router = create_sitemap_router(product_repository=product_repository)
+app.include_router(sitemap_router)

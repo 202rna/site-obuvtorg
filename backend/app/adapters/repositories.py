@@ -373,6 +373,14 @@ class PostgresProductRepository(ProductRepositoryPort):
                 if row is None:
                     return None
                 return self._row_to_product(row)
+
+    async def get_all_ids(self) -> list[int]:
+        """Получить список ID всех товаров (для sitemap)."""
+        async with self.pool.connection() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("SELECT id FROM products ORDER BY id ASC")
+                rows = await cur.fetchall()
+                return [row[0] for row in rows]
             
 class PostgresCartRepository(CartRepositoryPort):
     """Реализует добавление товара в корзину пользователя.

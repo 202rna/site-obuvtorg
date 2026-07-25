@@ -102,6 +102,11 @@ class ProductRepositoryPort(ABC):
     async def get_by_id(self, product_id: int) -> dict | None:
         pass
 
+    @abstractmethod
+    async def get_all_ids(self) -> list[int]:
+        """Получить список ID всех товаров (для sitemap)."""
+        pass
+
 
 class CartRepositoryPort(ABC):
     """Интерфейс управления корзиной в базе данных."""

@@ -27,7 +27,8 @@ from app.domain.usecases.cart.add_to_cart_use_case import AddToCartUseCase
 from app.domain.usecases.cart.get_cart_use_case import GetCartUseCase
 from app.domain.usecases.cart.clear_cart_use_case import ClearCartUseCase
 
-from app.domain.ports import TokenProviderPort
+from app.domain.ports import TokenProviderPort, ProductRepositoryPort
+from fastapi.responses import Response
 from app.domain.entities import User
 
 
@@ -587,5 +588,50 @@ def create_user_router(
             return await get_all_notes_use_case.execute(last_id=last_id, limit=limit)
         except Exception:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ошибка загрузки заметок.")
+
+    return router
+
+
+def create_sitemap_router(
+    product_repository: ProductRepositoryPort,
+) -> APIRouter:
+    """Фабрика роутера для sitemap.xml."""
+    router = APIRouter()
+
+    @router.get("/sitemap.xml", include_in_schema=False)
+    async def sitemap():
+        """Генерация sitemap.xml для поисковых систем."""
+        base_url = "https://xn----9sbdf5cdoog5g.xn--p1ai"
+
+        static_pages = [
+            {"loc": base_url, "priority": "1.0", "changefreq": "daily"},
+            {"loc": f"{base_url}/discount", "priority": "0.8", "changefreq": "daily"},
+            {"loc": f"{base_url}/how-to-drive", "priority": "0.6", "changefreq": "weekly"},
+            {"loc": f"{base_url}/notes", "priority": "0.5", "changefreq": "weekly"},
+        ]
+
+        product_ids = await product_repository.get_all_ids()
+
+        urls = []
+        for page in static_pages:
+            urls.append(f"""  <url>
+    <loc>{page['loc']}</loc>
+    <priority>{page['priority']}</priority>
+    <changefreq>{page['changefreq']}</changefreq>
+  </url>""")
+
+        for pid in product_ids:
+            urls.append(f"""  <url>
+    <loc>{base_url}/products/{pid}</loc>
+    <priority>0.9</priority>
+    <changefreq>weekly</changefreq>
+  </url>""")
+
+        xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{chr(10).join(urls)}
+</urlset>"""
+
+        return Response(content=xml, media_type="application/xml")
 
     return router
