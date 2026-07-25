@@ -5,6 +5,8 @@ import discountBadge from "../assets/discount-badge.png";
 import discountBadgeClick from "../assets/discount_click.png";
 import catalogLogo from "../assets/catalog_logo.png";
 import catalogLogoClick from "../assets/catalog_logo_click.png";
+import newsImg from "../assets/news.png";
+import newsImgClick from "../assets/news_click.png";
 
 export default function Navigation({
   token,
@@ -15,6 +17,7 @@ export default function Navigation({
   const location = useLocation();
   const isCatalog = location.pathname === "/";
   const isDiscount = location.pathname === "/discount";
+  const isNotes = location.pathname === "/notes";
 
   return (
     <nav className={styles.nav}>
@@ -123,8 +126,31 @@ export default function Navigation({
             />
           </Link>
 
-          <Link to="/notes" className={styles.newsLink}>
-            📄 Новости
+          {/* Новости */}
+          <Link
+            to="/notes"
+            className={styles.link}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "90px",
+              height: "52px",
+              padding: "0 8px",
+            }}
+          >
+            <img
+              src={isNotes ? newsImgClick : newsImg}
+              alt="Новости"
+              style={{
+                display: "block",
+                maxHeight: "48px",
+                maxWidth: "100%",
+                width: "auto",
+                height: "auto",
+                objectFit: "contain",
+              }}
+            />
           </Link>
           <Link to="/how-to-drive" className={styles.link}>
             🗺️ Как проехать
