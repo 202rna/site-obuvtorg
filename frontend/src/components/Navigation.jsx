@@ -134,9 +134,9 @@ export default function Navigation({
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
-              width: "90px",
-              height: "52px",
-              padding: "0 8px",
+              width: "60px",
+              height: "32px",
+              padding: "0 4px",
             }}
           >
             <img
@@ -144,7 +144,7 @@ export default function Navigation({
               alt="Новости"
               style={{
                 display: "block",
-                maxHeight: "48px",
+                maxHeight: "28px",
                 maxWidth: "100%",
                 width: "auto",
                 height: "auto",
