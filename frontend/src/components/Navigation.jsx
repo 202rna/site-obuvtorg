@@ -63,7 +63,7 @@ export default function Navigation({
             <span
               style={{ fontSize: "0.85rem", color: "#888", marginTop: "2px" }}
             >
-              🕒 Вт – пт: 09:00–17:00, сб 09:00–16:00 | Вс.-Пн. выходной
+              🕒 Вт. – Пт. 09:00–17:00, сб 09:00–16:00 | Вс.– Пн. выходной
             </span>
           </div>
         </div>
