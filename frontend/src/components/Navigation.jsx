@@ -63,7 +63,8 @@ export default function Navigation({
             <span
               style={{ fontSize: "0.85rem", color: "#888", marginTop: "2px" }}
             >
-              🕒 Вт. – Пт. 09:00–17:00, сб 09:00–16:00 | Вс.– Пн. выходной
+              🕒 Вт. – Пт. 09:00–17:00, Cб. 09:00–16:00{" "}
+              <span style={{ whiteSpace: "nowrap" }}>| Вс.– Пн. выходной</span>
             </span>
           </div>
         </div>
