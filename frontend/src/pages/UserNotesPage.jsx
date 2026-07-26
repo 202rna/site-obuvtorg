@@ -53,18 +53,8 @@ const styles = {
     fontSize: "17px",
     fontWeight: "700",
     color: "#0f172a",
-    margin: "0 0 12px 0",
-    lineHeight: "1.4",
-    display: "-webkit-box",
-    WebkitLineClamp: "2",
-    WebkitBoxOrient: "vertical",
-    overflow: "hidden",
-  },
-  preview: {
-    fontSize: "13px",
-    color: "#64748b",
-    lineHeight: "1.5",
     margin: "0 0 16px 0",
+    lineHeight: "1.4",
     display: "-webkit-box",
     WebkitLineClamp: "3",
     WebkitBoxOrient: "vertical",
@@ -155,13 +145,6 @@ export default function UserNotesPage({ API_URL }) {
     loadInitialNotes();
   }, [API_URL]);
 
-  function getPreview(text) {
-    if (!text) return "";
-    // Strip HTML tags for preview
-    const plain = text.replace(/<[^>]*>/g, "");
-    return plain.length > 150 ? plain.slice(0, 150) + "…" : plain;
-  }
-
   function formatDate(dateStr) {
     if (!dateStr) return "";
     try {
@@ -195,9 +178,6 @@ export default function UserNotesPage({ API_URL }) {
             <div style={styles.cardAccent} />
             <div style={styles.cardBody}>
               <h3 style={styles.title}>{n.title}</h3>
-              <p style={styles.preview}>
-                {getPreview(n.description || n.desc || "")}
-              </p>
               <div style={styles.meta}>
                 <span style={styles.date}>
                   {formatDate(n.created_at || n.date || "")}
