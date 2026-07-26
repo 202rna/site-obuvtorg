@@ -70,7 +70,7 @@ const styles = {
   },
   date: {
     fontSize: "12px",
-    color: "#94a3b8",
+    color: "#010914",
   },
   btn: {
     display: "inline-flex",
