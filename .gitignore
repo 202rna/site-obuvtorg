@@ -1,15 +1,15 @@
 .env
 
-# Python caches/bytecode
+backup_vps.ps1
+backup_vps.sh
+
 __pycache__/
 **/__pycache__/
 *.py[cod]
 
-# Build/test tool caches
 .pytest_cache/
 .mypy_cache/
 
-# Accidental local artifacts
 None
 dict
 list[[]str[]]
