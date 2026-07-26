@@ -248,29 +248,43 @@ export default function ProductsPage({
   };
 
   const allButtonStyle = {
-    padding: "8px 18px",
+    padding: "10px 22px",
     borderRadius: "30px",
-    border: "1px solid #4f46e5",
-    background: selectedCategories.length === 0 ? "#4f46e5" : "#f1f5f9",
-    color: selectedCategories.length === 0 ? "#fff" : "#1e293b",
+    border: "none",
+    background: selectedCategories.length === 0
+      ? "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)"
+      : "#f1f5f9",
+    color: selectedCategories.length === 0 ? "#fff" : "#475569",
     cursor: "pointer",
-    fontWeight: "500",
-    fontSize: "14px",
-    transition: "all 0.2s ease",
+    fontWeight: "600",
+    fontSize: "13px",
+    fontFamily: '"Inter", "SF Pro Text", system-ui, -apple-system, sans-serif',
+    transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
     outline: "none",
+    boxShadow: selectedCategories.length === 0
+      ? "0 4px 14px rgba(124, 58, 237, 0.3)"
+      : "none",
+    letterSpacing: "0.06em",
   };
 
   const filterButtonStyle = (cat) => ({
-    padding: "8px 18px",
+    padding: "10px 22px",
     borderRadius: "30px",
-    border: "1px solid #f7f7f7",
-    background: selectedCategories.includes(cat) ? "#d66d16" : "#f1f5f9",
-    color: selectedCategories.includes(cat) ? "#fff" : "#1e293b",
+    border: "none",
+    background: selectedCategories.includes(cat)
+      ? "linear-gradient(135deg, #d97706 0%, #f59e0b 100%)"
+      : "#f1f5f9",
+    color: selectedCategories.includes(cat) ? "#fff" : "#475569",
     cursor: "pointer",
-    fontWeight: "500",
-    fontSize: "14px",
-    transition: "all 0.2s ease",
+    fontWeight: "600",
+    fontSize: "13px",
+    fontFamily: '"Inter", "SF Pro Text", system-ui, -apple-system, sans-serif',
+    transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
     outline: "none",
+    boxShadow: selectedCategories.includes(cat)
+      ? "0 4px 14px rgba(245, 158, 11, 0.3)"
+      : "none",
+    letterSpacing: "0.06em",
   });
 
   if (loading) {
