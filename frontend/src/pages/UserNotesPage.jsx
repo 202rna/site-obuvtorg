@@ -70,7 +70,7 @@ const styles = {
   },
   date: {
     fontSize: "12px",
-    color: "#010914",
+    color: "#103e80",
   },
   btn: {
     display: "inline-flex",
@@ -180,7 +180,7 @@ export default function UserNotesPage({ API_URL }) {
               <h3 style={styles.title}>{n.title}</h3>
               <div style={styles.meta}>
                 <span style={styles.date}>
-                  {formatDate(n.created_at || n.date || "")}
+                  {formatDate(n.created_time)}
                 </span>
                 <Link to={`/note/${n.id}`} style={styles.btn}>
                   Читать →
