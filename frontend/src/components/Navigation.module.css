@@ -89,6 +89,17 @@
   color: #4f46e5;
 }
 
+.italic {
+  font-style: italic;
+}
+
+.separator {
+  color: #cbd5e1;
+  font-size: 15px;
+  user-select: none;
+  white-space: nowrap;
+}
+
 .activeLink {
   text-decoration: none;
   color: #4f46e5;

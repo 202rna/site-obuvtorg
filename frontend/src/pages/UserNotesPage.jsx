@@ -6,45 +6,94 @@ const styles = {
   container: {
     width: "100%",
     maxWidth: "100%",
-    padding: "0 24px 40px 24px", // убрали min-height и background
+    padding: "0 24px 40px 24px",
     boxSizing: "border-box",
     fontFamily: "system-ui, -apple-system, sans-serif",
   },
+  header: {
+    fontSize: "28px",
+    fontWeight: "800",
+    color: "#0f172a",
+    margin: "24px 0 0 0",
+    textAlign: "center",
+  },
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-    gap: "24px",
-    marginTop: "32px",
+    gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+    gap: "20px",
+    marginTop: "28px",
   },
   card: {
     backgroundColor: "#fff",
     borderRadius: "16px",
-    padding: "24px",
-    boxShadow: "0 4px 20px rgba(0,0,0,0.02)",
+    padding: "20px",
+    boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
     border: "1px solid #f1f5f9",
     display: "flex",
     flexDirection: "column",
     justifyContent: "space-between",
-    transition: "transform 0.2s ease",
+    transition: "transform 0.25s ease, box-shadow 0.25s ease",
+    cursor: "default",
+    position: "relative",
+    overflow: "hidden",
+  },
+  cardAccent: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "4px",
+    height: "100%",
+    background: "linear-gradient(180deg, #4f46e5 0%, #7c3aed 100%)",
+    borderRadius: "16px 0 0 16px",
+  },
+  cardBody: {
+    paddingLeft: "8px",
   },
   title: {
-    fontSize: "18px",
+    fontSize: "17px",
     fontWeight: "700",
     color: "#0f172a",
-    margin: "0 0 20px 0",
+    margin: "0 0 12px 0",
     lineHeight: "1.4",
+    display: "-webkit-box",
+    WebkitLineClamp: "2",
+    WebkitBoxOrient: "vertical",
+    overflow: "hidden",
+  },
+  preview: {
+    fontSize: "13px",
+    color: "#64748b",
+    lineHeight: "1.5",
+    margin: "0 0 16px 0",
+    display: "-webkit-box",
+    WebkitLineClamp: "3",
+    WebkitBoxOrient: "vertical",
+    overflow: "hidden",
+  },
+  meta: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: "auto",
+    paddingTop: "12px",
+    borderTop: "1px solid #f1f5f9",
+  },
+  date: {
+    fontSize: "12px",
+    color: "#94a3b8",
   },
   btn: {
-    display: "block",
-    textAlign: "center",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
     background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
     color: "#fff",
-    padding: "12px",
-    borderRadius: "10px",
+    padding: "8px 18px",
+    borderRadius: "8px",
     textDecoration: "none",
-    fontSize: "14px",
+    fontSize: "13px",
     fontWeight: "600",
-    boxShadow: "0 4px 12px rgba(124, 58, 237, 0.15)",
+    boxShadow: "0 3px 10px rgba(124, 58, 237, 0.15)",
     transition: "all 0.2s ease",
   },
   btnMore: {
@@ -106,20 +155,58 @@ export default function UserNotesPage({ API_URL }) {
     loadInitialNotes();
   }, [API_URL]);
 
+  function getPreview(text) {
+    if (!text) return "";
+    // Strip HTML tags for preview
+    const plain = text.replace(/<[^>]*>/g, "");
+    return plain.length > 150 ? plain.slice(0, 150) + "…" : plain;
+  }
+
+  function formatDate(dateStr) {
+    if (!dateStr) return "";
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString("ru-RU", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+    } catch {
+      return "";
+    }
+  }
+
   return (
     <div style={styles.container}>
-      {/* Заголовок можно раскомментировать при необходимости */}
-      {/* <h2 style={{ color: "#0f172a", fontSize: "28px", fontWeight: "800", margin: "24px 0 0 0" }}>
-        📄 Новостная лента
-      </h2> */}
-
       <div style={styles.grid}>
         {notes.map((n) => (
-          <div key={n.id} style={styles.card}>
-            <h3 style={styles.title}>{n.title}</h3>
-            <Link to={`/note/${n.id}`} style={styles.btn}>
-              Открыть полностью →
-            </Link>
+          <div
+            key={n.id}
+            style={styles.card}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-4px)";
+              e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,0,0,0.08)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "0 2px 12px rgba(0,0,0,0.04)";
+            }}
+          >
+            <div style={styles.cardAccent} />
+            <div style={styles.cardBody}>
+              <h3 style={styles.title}>{n.title}</h3>
+              <p style={styles.preview}>
+                {getPreview(n.description || n.desc || "")}
+              </p>
+              <div style={styles.meta}>
+                <span style={styles.date}>
+                  {formatDate(n.created_at || n.date || "")}
+                </span>
+                <Link to={`/note/${n.id}`} style={styles.btn}>
+                  Читать →
+                </Link>
+              </div>
+            </div>
           </div>
         ))}
       </div>
@@ -130,6 +217,12 @@ export default function UserNotesPage({ API_URL }) {
             style={styles.btnMore}
             onClick={loadMoreNotes}
             disabled={loading}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "#dde3ff";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "#eef2ff";
+            }}
           >
             {loading ? "Загрузка..." : "Показать еще заметки"}
           </button>

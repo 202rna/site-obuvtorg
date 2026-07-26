@@ -170,7 +170,7 @@ class PostgresProductRepository(ProductRepositoryPort):
                             LEFT JOIN product_categories pc ON pc.product_id = p.id
                             LEFT JOIN categories c ON c.id = pc.category_id
                             GROUP BY p.id
-                            ORDER BY p.id ASC
+                            ORDER BY p.id DESC
                             LIMIT %s
                             """,
                             (limit,)
@@ -203,7 +203,7 @@ class PostgresProductRepository(ProductRepositoryPort):
                             LEFT JOIN categories c ON c.id = pc.category_id
                             WHERE p.id > %s
                             GROUP BY p.id
-                            ORDER BY p.id ASC
+                            ORDER BY p.id DESC
                             LIMIT %s
                             """,
                             (last_id, limit)

@@ -145,7 +145,7 @@ export default function Navigation({
               alt="Новости"
               style={{
                 display: "block",
-                maxHeight: "28px",
+                maxHeight: "40px",
                 maxWidth: "100%",
                 width: "auto",
                 height: "auto",
@@ -153,17 +153,22 @@ export default function Navigation({
               }}
             />
           </Link>
-          <Link to="/how-to-drive" className={styles.link}>
+          <Link
+            to="/how-to-drive"
+            className={`${styles.link} ${styles.italic}`}
+          >
             🗺️ Как проехать
           </Link>
+          <span className={styles.separator}>|</span>
           {token && (
-            <Link to="/profile" className={styles.link}>
+            <Link to="/profile" className={`${styles.link} ${styles.italic}`}>
               Профиль
             </Link>
           )}
+          {token && <span className={styles.separator}>|</span>}
           {token && (
-            <Link to="/cart" className={styles.link}>
-              Корзина <span className={styles.badge}>{cartCount}</span>
+            <Link to="/cart" className={`${styles.link} ${styles.italic}`}>
+              🛒 Корзина <span className={styles.badge}>{cartCount}</span>
             </Link>
           )}
           {token && userRole === "admin" && (
