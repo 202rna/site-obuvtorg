@@ -734,7 +734,7 @@ def create_chat_router() -> APIRouter:
                         if p["id"] == pid:
                             # Берём первую картинку для карточки
                             image_url = ""
-                            if p.get("image_urls") and len(p["image_urls"]) > 0:
+                            if isinstance(p.get("image_urls"), list) and len(p["image_urls"]) > 0:
                                 image_url = p["image_urls"][0]
                             elif p.get("image_url"):
                                 image_url = p["image_url"]

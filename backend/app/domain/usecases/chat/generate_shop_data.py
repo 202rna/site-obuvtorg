@@ -39,7 +39,7 @@ async def generate_shop_data(
             "full_description": p.get("full_description", ""),
             "sizes": p.get("sizes", []),
             "categories": p.get("categories", []),
-            "image_url": p.get("image_url", ""),
+            "image_url": p.get("image_url") or "",
             "image_urls": p.get("image_urls", []),
             "product_url": f"/products/{p['id']}",
         }

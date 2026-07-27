@@ -102,7 +102,7 @@ class PostgresProductRepository(ProductRepositoryPort):
             "title": row[1],
             "price": float(row[2]),
             "description": row[3],
-            "image_url": row[4],
+            "image_url": row[4] or "",
             "image_urls": image_urls,
             "full_description": row[6] if len(row) > 6 else None,
             "discount": int(row[7]) if len(row) > 7 and row[7] is not None else 0,

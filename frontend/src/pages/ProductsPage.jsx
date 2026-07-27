@@ -82,6 +82,16 @@ export default function ProductsPage({
     return [...priorityCats, ...otherCats];
   }, [discountFiltered]);
 
+  // Только "другие" категории (не женская, мужская, для детей)
+  const otherCategories = useMemo(() => {
+    const allCats = discountFiltered.flatMap((p) => p.categories || []);
+    const unique = [...new Set(allCats)];
+    const priority = ["для детей", "мужская", "женская"];
+    return unique
+      .filter((cat) => !priority.includes(cat))
+      .sort((a, b) => a.localeCompare(b));
+  }, [discountFiltered]);
+
   const filteredProducts = useMemo(() => {
     // Сначала применяем мобильный таб
     let result = discountFiltered;
@@ -249,14 +259,25 @@ export default function ProductsPage({
           }
           .mobile-tab-bar {
             display: flex !important;
+            flex-direction: column;
             position: sticky;
             top: 0;
             z-index: 10;
             background: white;
             border-bottom: 1px solid #e2e8f0;
-            padding: 0 0;
             margin: 0 -24px 0;
             box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+          }
+          .mobile-tab-bar .main-tabs {
+            display: flex;
+            width: 100%;
+          }
+          .mobile-tab-bar .sub-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            width: 100%;
+            padding: 2px 0 6px 0;
+            justify-content: stretch;
           }
           .desktop-filters {
             display: none !important;
@@ -272,21 +293,15 @@ export default function ProductsPage({
         }
       `}</style>
 
-      {/* === Мобильные табы: жёстко фиксируются сверху === */}
+      {/* === Мобильные табы (основные + подкатегории) === */}
       <div className="mobile-tab-bar">
-        <div style={{
-          display: "flex",
-          width: "100%",
-          justifyContent: "stretch",
-        }}>
+        <div className="main-tabs">
           {MOBILE_TABS.map((tab) => {
             const isActive = mobileTab === tab.id;
             return (
               <button
                 key={tab.id}
-                onClick={() =>
-                  setMobileTab(isActive ? "" : tab.id)
-                }
+                onClick={() => setMobileTab(isActive ? "" : tab.id)}
                 style={{
                   flex: 1,
                   padding: "10px 4px",
@@ -308,6 +323,38 @@ export default function ProductsPage({
             );
           })}
         </div>
+
+        {/* Подкатегории (помельче, серые) под основными табами */}
+        {otherCategories.length > 0 && (
+          <div className="sub-tabs">
+            {otherCategories.map((cat) => {
+              const isSelected = selectedCategories.includes(cat);
+              return (
+                <button
+                  key={cat}
+                  onClick={() => handleCategoryToggle(cat)}
+                  style={{
+                    flex: 1,
+                    padding: "5px 4px",
+                    border: "none",
+                    background: "transparent",
+                    color: isSelected ? "#64748b" : "#cbd5e1",
+                    fontWeight: isSelected ? 500 : 400,
+                    fontSize: "10px",
+                    cursor: "pointer",
+                    fontFamily: '"Inter", "SF Pro Text", system-ui, sans-serif',
+                    letterSpacing: "0.02em",
+                    textTransform: "uppercase",
+                    transition: "all 0.2s",
+                    borderBottom: isSelected ? "1.5px solid #94a3b8" : "1.5px solid transparent",
+                  }}
+                >
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div

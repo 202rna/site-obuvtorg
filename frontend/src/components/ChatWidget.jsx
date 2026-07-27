@@ -51,7 +51,10 @@ export default function ChatWidget({ isOpen, onClose }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: updatedMessages.map(({ role, content }) => ({ role, content })),
+          messages: updatedMessages.map(({ role, content }) => ({
+            role,
+            content,
+          })),
         }),
       });
 
@@ -101,11 +104,36 @@ export default function ChatWidget({ isOpen, onClose }) {
 
   function normalizeImageUrl(src) {
     if (!src) return src;
-    if (src.startsWith("http")) return src;
-    if (src.startsWith("/static/")) return src;
-    if (src.startsWith("/api/")) return src;
-    if (src.startsWith("data:")) return src;
-    return `/static/uploads/${src}`;
+
+    // 1. Очищаем кривые ссылки от AI типа https://static/... или static/...
+    let cleanSrc = src;
+    if (
+      cleanSrc.startsWith("http://static/") ||
+      cleanSrc.startsWith("https://static/")
+    ) {
+      cleanSrc = cleanSrc.replace(/^https?:\/\/static\//, "/static/");
+    }
+
+    // 2. Если это полноценная внешняя ссылка (http://site.com...), возвращаем как есть
+    if (cleanSrc.startsWith("http://") || cleanSrc.startsWith("https://")) {
+      return cleanSrc;
+    }
+
+    // 3. Гарантируем правильный косой слэш для локальной статики и API
+    if (
+      cleanSrc.startsWith("/static/") ||
+      cleanSrc.startsWith("/api/") ||
+      cleanSrc.startsWith("data:")
+    ) {
+      return cleanSrc;
+    }
+
+    if (cleanSrc.startsWith("static/")) {
+      return `/${cleanSrc}`;
+    }
+
+    // 4. Если пришло просто имя файла (image.jpg), складываем в uploads
+    return `/static/uploads/${cleanSrc}`;
   }
 
   function renderMessageContent(content) {
@@ -178,7 +206,9 @@ export default function ChatWidget({ isOpen, onClose }) {
                       <span className="finalPrice">
                         {product.final_price.toLocaleString()} ₽
                       </span>
-                      <span className="discountBadge">-{product.discount}%</span>
+                      <span className="discountBadge">
+                        -{product.discount}%
+                      </span>
                     </>
                   ) : (
                     <span className="finalPrice">
@@ -202,7 +232,16 @@ export default function ChatWidget({ isOpen, onClose }) {
       <div className="chatHeader">
         <div className="chatHeaderLeft">
           <div className="chatHeaderAvatar">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
           </div>
@@ -211,12 +250,17 @@ export default function ChatWidget({ isOpen, onClose }) {
             <div className="chatHeaderStatus">Онлайн</div>
           </div>
         </div>
-        <button
-          className="closeButton"
-          onClick={onClose}
-          aria-label="Закрыть"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <button className="closeButton" onClick={onClose} aria-label="Закрыть">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
@@ -273,7 +317,16 @@ export default function ChatWidget({ isOpen, onClose }) {
           disabled={!inputText.trim() || isLoading}
           aria-label="Отправить"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <line x1="22" y1="2" x2="11" y2="13" />
             <polygon points="22 2 15 22 11 13 2 9 22 2" />
           </svg>
