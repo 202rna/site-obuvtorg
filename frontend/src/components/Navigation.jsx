@@ -72,7 +72,7 @@ export default function Navigation({
               </a>
 
               <span>
-                150049, Ярославская область, г. Ярославль, <br /> 
+                150049, Ярославская область, г. Ярославль, <br />
                 ул. Вспольинское Поле, д. 18
               </span>
 
@@ -80,7 +80,9 @@ export default function Navigation({
                 style={{ fontSize: "0.85rem", color: "#888", marginTop: "2px" }}
               >
                 🕒 Вт. – Пт. 09:00–17:00, Cб. 09:00–16:00{" "}
-                <span style={{ whiteSpace: "nowrap" }}>| Вс.– Пн. выходной</span>
+                <span style={{ whiteSpace: "nowrap" }}>
+                  | Вс.– Пн. выходной
+                </span>
               </span>
             </div>
           </div>
@@ -132,27 +134,21 @@ export default function Navigation({
                   className={styles.navLink}
                   onClick={onChatClose}
                   style={{
-                    opacity:
-                      hoveredLink !== null && !isHovered ? 0.4 : 1,
+                    opacity: hoveredLink !== null && !isHovered ? 0.4 : 1,
                     color:
                       isHovered || isActive
                         ? "#000000"
                         : link.isRed
                           ? "#dc2626"
                           : "#4b5563",
-                    transition:
-                      "opacity 0.25s ease, color 0.25s ease",
+                    transition: "opacity 0.25s ease, color 0.25s ease",
                   }}
                   onMouseEnter={() => setHoveredLink(link.id)}
                   onMouseLeave={() => setHoveredLink(null)}
                 >
-                  <span style={{ fontWeight: 700 }}>
-                    {link.label}
-                  </span>
+                  <span style={{ fontWeight: 700 }}>{link.label}</span>
                   {link.subLabel && (
-                    <span className={styles.navSublabel}>
-                      {link.subLabel}
-                    </span>
+                    <span className={styles.navSublabel}>{link.subLabel}</span>
                   )}
                 </Link>
               );
@@ -233,10 +229,7 @@ export default function Navigation({
 
       {/* Мобильная панель: AI-подборщик на всю ширину */}
       <div className={styles.mobileChatBar}>
-        <button
-          className={styles.mobileChatBtn}
-          onClick={onChatToggle}
-        >
+        <button className={styles.mobileChatBtn} onClick={onChatToggle}>
           <svg
             width="18"
             height="18"

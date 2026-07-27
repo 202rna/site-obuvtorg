@@ -7,7 +7,7 @@ const API_URL = "/api";
 const INITIAL_MESSAGE = {
   role: "assistant",
   content:
-    "👋 Здравствуйте! Я консультант магазина «Обувьторг». Задайте мне любой вопрос о товарах, акциях или ассортименте — я с радостью помогу!",
+    "🤖 **Подбор обуви для Вас:** найдем обувь в каталоге за секунды. Опишите нужную пару (тип, сезон, материал, цвет) или куда вы в ней пойдете. ✨",
 };
 
 export default function ChatWidget({ isOpen, onClose }) {
@@ -246,8 +246,8 @@ export default function ChatWidget({ isOpen, onClose }) {
             </svg>
           </div>
           <div className="chatHeaderInfo">
-            <div className="chatHeaderTitle">AI Консультант</div>
-            <div className="chatHeaderStatus">Онлайн</div>
+            {/* <div className="chatHeaderTitle">AI </div>
+            <div className="chatHeaderStatus">Онлайн</div> */}
           </div>
         </div>
         <button className="closeButton" onClick={onClose} aria-label="Закрыть">

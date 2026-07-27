@@ -5,7 +5,7 @@ import ProductCard from "../components/ProductCard.jsx";
 const MOBILE_TABS = [
   { id: "женская", label: "Женщинам" },
   { id: "мужская", label: "Мужчинам" },
-  { id: "для детей", label: "Детям" },
+  { id: "для детей", label: "Для детей" },
 ];
 
 export default function ProductsPage({
@@ -86,7 +86,7 @@ export default function ProductsPage({
     let result = discountFiltered;
     if (mobileTab) {
       result = result.filter(
-        (p) => p.categories && p.categories.includes(mobileTab)
+        (p) => p.categories && p.categories.includes(mobileTab),
       );
     }
     // Затем применяем фильтр категорий из URL
@@ -94,7 +94,7 @@ export default function ProductsPage({
       result = result.filter(
         (p) =>
           p.categories &&
-          p.categories.some((cat) => selectedCategories.includes(cat))
+          p.categories.some((cat) => selectedCategories.includes(cat)),
       );
     }
     return result;
@@ -171,7 +171,15 @@ export default function ProductsPage({
 
   if (loading) {
     return (
-      <div style={{ textAlign: "center", padding: "40px 0", fontSize: "18px", color: "#64748b", fontFamily: "system-ui, -apple-system, sans-serif" }}>
+      <div
+        style={{
+          textAlign: "center",
+          padding: "40px 0",
+          fontSize: "18px",
+          color: "#64748b",
+          fontFamily: "system-ui, -apple-system, sans-serif",
+        }}
+      >
         Загрузка товаров...
       </div>
     );
@@ -237,7 +245,6 @@ export default function ProductsPage({
           fontFamily: "system-ui, -apple-system, sans-serif",
         }}
       >
-
         {/* ========== МОБИЛЬНЫЕ ТАБЫ (только на мобилках) ========== */}
         <div className="mobile-tab-bar" style={{ display: "none" }}>
           <div className="main-tabs">
@@ -260,7 +267,9 @@ export default function ProductsPage({
                     letterSpacing: "0.04em",
                     textTransform: "uppercase",
                     transition: "all 0.2s",
-                    borderBottom: isActive ? "2px solid #4f46e5" : "2px solid transparent",
+                    borderBottom: isActive
+                      ? "2px solid #4f46e5"
+                      : "2px solid transparent",
                   }}
                 >
                   {tab.label}
@@ -285,11 +294,14 @@ export default function ProductsPage({
                       fontWeight: isSelected ? 500 : 400,
                       fontSize: "10px",
                       cursor: "pointer",
-                      fontFamily: '"Inter", "SF Pro Text", system-ui, sans-serif',
+                      fontFamily:
+                        '"Inter", "SF Pro Text", system-ui, sans-serif',
                       letterSpacing: "0.02em",
                       textTransform: "uppercase",
                       transition: "all 0.2s",
-                      borderBottom: isSelected ? "1.5px solid #94a3b8" : "1.5px solid transparent",
+                      borderBottom: isSelected
+                        ? "1.5px solid #94a3b8"
+                        : "1.5px solid transparent",
                     }}
                   >
                     {cat}
@@ -317,7 +329,17 @@ export default function ProductsPage({
             boxSizing: "border-box",
           }}
         >
-          <div style={{ fontWeight: 700, fontSize: "12px", color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "12px", paddingLeft: "8px" }}>
+          <div
+            style={{
+              fontWeight: 700,
+              fontSize: "12px",
+              color: "#94a3b8",
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              marginBottom: "12px",
+              paddingLeft: "8px",
+            }}
+          >
             Категории
           </div>
 
@@ -337,7 +359,9 @@ export default function ProductsPage({
 
           {/* Разделитель */}
           {otherCategories.length > 0 && (
-            <div style={{ margin: "16px 0 8px", borderTop: "1px solid #e2e8f0" }} />
+            <div
+              style={{ margin: "16px 0 8px", borderTop: "1px solid #e2e8f0" }}
+            />
           )}
 
           {/* Подкатегории */}
@@ -373,7 +397,8 @@ export default function ProductsPage({
                 cursor: "pointer",
                 fontWeight: 500,
                 fontSize: "12px",
-                fontFamily: '"Inter", "SF Pro Text", system-ui, -apple-system, sans-serif',
+                fontFamily:
+                  '"Inter", "SF Pro Text", system-ui, -apple-system, sans-serif',
                 transition: "all 0.2s",
               }}
             >
@@ -392,7 +417,14 @@ export default function ProductsPage({
           }}
         >
           {filteredProducts.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "40px 0", fontSize: "18px", color: "#64748b" }}>
+            <div
+              style={{
+                textAlign: "center",
+                padding: "40px 0",
+                fontSize: "18px",
+                color: "#64748b",
+              }}
+            >
               {discountedOnly
                 ? "Нет товаров со скидкой в выбранных категориях"
                 : "Товаров не найдено"}
