@@ -139,9 +139,32 @@
 .rightBlock {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   flex-shrink: 0;
   margin-left: auto;
+}
+
+.aiButton {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2b6cb0;
+  background: #ebf4ff;
+  border: 1px solid #bee3f8;
+  border-radius: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  text-decoration: none;
+  font-family: inherit;
+}
+
+.aiButton:hover {
+  background: #d4e8ff;
+  border-color: #2b6cb0;
+  color: #1a4f8b;
 }
 
 .btnOut {
@@ -185,6 +208,21 @@
 
 /* Мобильные стили (≤ 768px) */
 @media (max-width: 768px) {
+  .aiButton {
+    padding: 6px 10px;
+    font-size: 0;
+    gap: 0;
+    min-width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    justify-content: center;
+  }
+  
+  .aiButton svg {
+    margin-right: 0 !important;
+    width: 18px;
+    height: 18px;
+  }
   .nav {
     padding: 8px 12px;
     gap: 4px;

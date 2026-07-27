@@ -28,8 +28,15 @@ from app.domain.usecases.cart.get_cart_use_case import GetCartUseCase
 from app.domain.usecases.cart.clear_cart_use_case import ClearCartUseCase
 
 from app.domain.ports import TokenProviderPort, ProductRepositoryPort
+from app.domain.usecases.chat.chat_service import get_ai_answer
+from app.domain.usecases.chat.generate_shop_data import generate_shop_data, load_shop_data
 from fastapi.responses import Response
 from app.domain.entities import User
+from pydantic import BaseModel
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 security = HTTPBearer()
@@ -633,5 +640,103 @@ def create_sitemap_router(
 </urlset>"""
 
         return Response(content=xml, media_type="application/xml")
+
+    return router
+
+
+class ChatMessageSchema(BaseModel):
+    """Схема одного сообщения чата."""
+    role: str
+    content: str
+
+
+class ChatRequestSchema(BaseModel):
+    """Схема запроса к AI-чату."""
+    messages: list[ChatMessageSchema]
+
+
+def create_chat_router() -> APIRouter:
+    """Фабрика роутера для AI-чата."""
+    router = APIRouter()
+
+    @router.post("/chat", status_code=status.HTTP_200_OK)
+    async def chat(data: ChatRequestSchema):
+        """Отправка сообщения в AI-чат консультант магазина.
+        
+        Принимает массив сообщений (историю диалога) с клиента.
+        Последнее сообщение должно быть от user — на него AI ответит.
+        Сервер не хранит историю в БД, она хранится в состоянии React на клиенте.
+        
+        Если AI рекомендует товары (с маркерами [RECOMMEND:ID]),
+        возвращает их данные (фото, цена, название, ссылка) для отображения карточек.
+        
+        Args:
+            data: Объект с полем messages — массив {role, content}.
+        
+        Returns:
+            dict: {
+                "role": "assistant",
+                "content": str,  # ответ AI (текст)
+                "recommended_products": list[dict]  # данные рекомендованных товаров
+            }
+        """
+        ai_api_key = os.getenv("AI_TUNNEL_API_KEY")
+        ai_model = os.getenv("AI_TUNNEL_MODEL", "gpt-4o-mini")
+        ai_base_url = os.getenv("AI_TUNNEL_BASE_URL", "https://api.aitunnel.ru/v1")
+        
+        if not ai_api_key:
+            return {
+                "role": "assistant",
+                "content": "Извините, AI-консультант временно не настроен. Пожалуйста, позвоните нам по телефону +7 (4852) 21-47-55.",
+                "recommended_products": [],
+            }
+        
+        try:
+            messages_dict = [{"role": m.role, "content": m.content} for m in data.messages]
+            result = await get_ai_answer(
+                messages=messages_dict,
+                api_key=ai_api_key,
+                model=ai_model,
+                base_url=ai_base_url,
+            )
+            
+            # Загружаем данные магазина, чтобы получить инфу о рекомендованных товарах
+            shop_data = await load_shop_data()
+            recommended_products = []
+            
+            for pid in result.get("recommended_product_ids", []):
+                if shop_data and "products" in shop_data:
+                    for p in shop_data["products"]:
+                        if p["id"] == pid:
+                            # Берём первую картинку для карточки
+                            image_url = ""
+                            if p.get("image_urls") and len(p["image_urls"]) > 0:
+                                image_url = p["image_urls"][0]
+                            elif p.get("image_url"):
+                                image_url = p["image_url"]
+                            
+                            recommended_products.append({
+                                "id": p["id"],
+                                "title": p["title"],
+                                "price": p["price"],
+                                "final_price": p.get("final_price", p["price"]),
+                                "discount": p.get("discount", 0),
+                                "image_url": image_url,
+                                "product_url": f"/products/{p['id']}",
+                            })
+                            break
+            
+            return {
+                "role": "assistant",
+                "content": result["content"],
+                "recommended_products": recommended_products,
+            }
+        except Exception as e:
+            print(f"Ошибка AI-чата: {e}")
+            return {
+                "role": "assistant",
+                "content": "Извините, произошла ошибка при обработке запроса. Пожалуйста, попробуйте позже или позвоните нам по телефону +7 (4852) 21-47-55.",
+                "recommended_products": [],
+            }
 
     return router

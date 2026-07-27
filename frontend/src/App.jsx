@@ -12,13 +12,14 @@ import UserNotesPage from "./pages/UserNotesPage.jsx";
 import NoteDetailPage from "./pages/NoteDetailPage.jsx";
 import ProductPage from "./pages/ProductPage";
 import HowToDrivePage from "./pages/HowToDrivePage";
-// import Catalog from "./pages/Catalog"; // удалили
+import ChatWidget from "./components/ChatWidget.jsx";
 
 export default function App() {
   const API_URL = "/api";
   const [token, setToken] = useState(localStorage.getItem("token") || "");
   const [profile, setProfile] = useState(null);
   const [cart, setCart] = useState([]);
+  const [chatOpen, setChatOpen] = useState(false);
 
   function handleLogout() {
     localStorage.removeItem("token");
@@ -110,10 +111,10 @@ export default function App() {
         userRole={profile?.role || "user"}
         cartCount={cart.length}
         handleLogout={handleLogout}
+        onChatToggle={() => setChatOpen((prev) => !prev)}
       />
 
       <Routes>
-        {/* ГЛАВНАЯ СТРАНИЦА – теперь только один маршрут */}
         <Route
           path="/"
           element={
@@ -207,6 +208,8 @@ export default function App() {
           }
         />
       </Routes>
+
+      <ChatWidget isOpen={chatOpen} onClose={() => setChatOpen(false)} />
     </div>
   );
 }

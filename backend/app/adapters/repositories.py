@@ -1,6 +1,6 @@
 from typing import Any, List
 from psycopg_pool import AsyncConnectionPool
-from app.domain.ports import UserRepositoryPort, ProductRepositoryPort, CartRepositoryPort, NoteRepositoryPort
+from app.domain.ports import UserRepositoryPort, ProductRepositoryPort, CartRepositoryPort, NoteRepositoryPort, ChatRepositoryPort
 from app.domain.entities import User
 from app.domain.ports import MissingType
 from datetime import datetime, timezone
@@ -638,3 +638,48 @@ class PostgresNoteRepository(NoteRepositoryPort):
             "image_url": row[3],
             "created_time": row[4]
         }
+
+
+class PostgresChatRepository(ChatRepositoryPort):
+    """Репозиторий для хранения истории чатов в PostgreSQL."""
+
+    def __init__(self, pool: AsyncConnectionPool[Any]) -> None:
+        self.pool = pool
+
+    async def add_message(self, session_id: str, role: str, content: str) -> None:
+        """Сохранить сообщение в историю."""
+        async with self.pool.connection() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    """
+                    INSERT INTO chat_history (session_id, role, content)
+                    VALUES (%s, %s, %s)
+                    """,
+                    (session_id, role, content),
+                )
+
+    async def get_history(self, session_id: str, limit: int = 50) -> list[dict]:
+        """Получить историю сообщений сессии (от более старых к новым)."""
+        async with self.pool.connection() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    """
+                    SELECT role, content
+                    FROM chat_history
+                    WHERE session_id = %s
+                    ORDER BY id ASC
+                    LIMIT %s
+                    """,
+                    (session_id, limit),
+                )
+                rows = await cur.fetchall()
+                return [{"role": row[0], "content": row[1]} for row in rows]
+
+    async def clear_history(self, session_id: str) -> None:
+        """Очистить историю сессии."""
+        async with self.pool.connection() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "DELETE FROM chat_history WHERE session_id = %s",
+                    (session_id,),
+                )

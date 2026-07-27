@@ -62,6 +62,19 @@ CREATE TABLE IF NOT EXISTS notes (
 );
 
 
+-- Таблица истории чатов
+CREATE TABLE IF NOT EXISTS chat_history (
+    id SERIAL PRIMARY KEY,
+    session_id VARCHAR(100) NOT NULL,
+    role VARCHAR(20) NOT NULL,
+    content TEXT NOT NULL,
+    created_time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_history_session_id ON chat_history(session_id);
+CREATE INDEX IF NOT EXISTS idx_chat_history_created_time ON chat_history(created_time);
+
+
 INSERT INTO users (email, hashed_password, role) 
 VALUES (
     'admin', 

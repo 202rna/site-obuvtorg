@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, APIRouter, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -9,6 +9,12 @@ from app.infrastructure.jwt_provider import JwtTokenProvider
 
 from app.adapters.repositories import PostgresUserRepository, PostgresProductRepository, PostgresCartRepository, PostgresNoteRepository
 from app.adapters.controllers import create_user_router, create_sitemap_router
+from app.domain.usecases.chat.generate_shop_data import generate_shop_data, load_shop_data
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+import logging
+
+logger = logging.getLogger(__name__)
+scheduler = AsyncIOScheduler()
 
 from app.domain.usecases.users.register_use_cases import RegisterUserUseCase
 from app.domain.usecases.users.login_use_case import LoginUserUseCase
@@ -31,7 +37,30 @@ from app.domain.usecases.product.update_product_use_case import UpdateProductUse
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await db_pool.open()
+    
+    scheduler.add_job(
+        generate_shop_data,
+        kwargs={"product_repo": product_repository, "note_repo": note_repository},
+        trigger="cron",
+        hour=0,
+        minute=0,
+        id="daily_shop_data_generation",
+        name="Ежедневная генерация данных магазина",
+        replace_existing=True,
+    )
+    scheduler.start()
+    
+    # Генерируем данные при первом запуске (если файла ещё нет)
+    existing_data = await load_shop_data()
+    if existing_data is None:
+        logger.info("Генерирую данные магазина при первом запуске...")
+        await generate_shop_data(product_repo=product_repository, note_repo=note_repository)
+    else:
+        logger.info(f"Данные магазина уже существуют (от {existing_data.get('generated_at', 'неизвестно')})")
+    
     yield
+    
+    scheduler.shutdown(wait=False)
     await db_pool.close()
 
 
@@ -110,3 +139,63 @@ app.include_router(user_router, prefix="/api")
 
 sitemap_router = create_sitemap_router(product_repository=product_repository)
 app.include_router(sitemap_router)
+
+from app.adapters.controllers import create_chat_router
+chat_router = create_chat_router()
+app.include_router(chat_router, prefix="/api")
+
+
+# Создаём отдельный роутер для управления данными магазина
+shop_data_router = APIRouter(prefix="/api/shop-data", tags=["shop-data"])
+
+
+@shop_data_router.post("/regenerate", status_code=status.HTTP_200_OK)
+async def regenerate_shop_data():
+    """Принудительная регенерация данных магазина (скидки, размеры, новости).
+    
+    Вызывается вручную, если нужно обновить данные вне расписания.
+    """
+    try:
+        result = await generate_shop_data(product_repo=product_repository, note_repo=note_repository)
+        return {
+            "success": True,
+            "message": "Данные магазина успешно сгенерированы",
+            "products_count": result.get("products_count", 0),
+            "news_count": result.get("news_count", 0),
+            "generated_at": result.get("generated_at"),
+        }
+    except Exception as e:
+        logger.error(f"Ошибка генерации данных магазина: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ошибка генерации данных: {str(e)}",
+        )
+
+
+@shop_data_router.get("", status_code=status.HTTP_200_OK)
+async def get_shop_data():
+    """Получение текущих данных магазина (товары, скидки, размеры, новости).
+    
+    Возвращает свежесгенерированные данные для использования в AI-чате.
+    """
+    try:
+        data = await load_shop_data()
+        if data is None:
+            return {
+                "success": False,
+                "message": "Данные магазина ещё не сгенерированы. Вызовите POST /api/shop-data/regenerate для генерации.",
+                "data": None,
+            }
+        return {
+            "success": True,
+            "data": data,
+        }
+    except Exception as e:
+        logger.error(f"Ошибка загрузки данных магазина: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ошибка загрузки данных: {str(e)}",
+        )
+
+
+app.include_router(shop_data_router)

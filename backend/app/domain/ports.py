@@ -105,7 +105,7 @@ class ProductRepositoryPort(ABC):
     @abstractmethod
     async def get_all_ids(self) -> list[int]:
         """Получить список ID всех товаров (для sitemap)."""
-        pass
+ь        pass
 
 
 class CartRepositoryPort(ABC):
@@ -123,6 +123,25 @@ class CartRepositoryPort(ABC):
     @abstractmethod
     async def clear(self, user_id: int) -> None:
         """Очистить корзину пользователя."""
+        pass
+
+
+class ChatRepositoryPort(ABC):
+    """Интерфейс для работы с историей чата."""
+
+    @abstractmethod
+    async def add_message(self, session_id: str, role: str, content: str) -> None:
+        """Сохранить сообщение в историю."""
+        pass
+
+    @abstractmethod
+    async def get_history(self, session_id: str, limit: int = 50) -> list[dict]:
+        """Получить историю сообщений сессии."""
+        pass
+
+    @abstractmethod
+    async def clear_history(self, session_id: str) -> None:
+        """Очистить историю сессии."""
         pass
 
 
