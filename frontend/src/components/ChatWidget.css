@@ -9,19 +9,7 @@
   background: #f7f8fc;
   border-bottom: 1px solid #e2e8f0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  animation: slideDown 0.25s ease-out;
   overflow: hidden;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    flex: 0;
-  }
-  to {
-    opacity: 1;
-    flex: 1;
-  }
 }
 
 /* Шапка */
@@ -111,18 +99,6 @@
 /* Бабл сообщения */
 .message {
   max-width: 88%;
-  animation: msgIn 0.2s ease-out;
-}
-
-@keyframes msgIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 .assistantMessage {
@@ -530,4 +506,3 @@
   border-radius: 4px;
   font-weight: 600;
 }
-

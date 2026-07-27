@@ -38,6 +38,18 @@ export default function App() {
     setCart([]);
   }
 
+  function handleChatClose() {
+    setChatOpen(false);
+  }
+
+  function handleChatToggle() {
+    if (chatOpen) {
+      handleChatClose();
+    } else {
+      setChatOpen(true);
+    }
+  }
+
   async function fetchCart(currentToken) {
     try {
       const response = await fetch(`${API_URL}/cart`, {
@@ -121,9 +133,9 @@ export default function App() {
           "linear-gradient(135deg, #d3eaf5 0%, #faf4f4 50%, #f2f2e1 100%)",
         minHeight: "100vh",
         boxSizing: "border-box",
-        overflow: chatOpen ? "hidden" : "visible",
-        height: chatOpen ? "100vh" : "auto",
-        maxHeight: chatOpen ? "100vh" : "none",
+        height: "100vh",
+        maxHeight: "100vh",
+        overflow: "hidden",
         display: "flex",
         flexDirection: "column",
       }}
@@ -134,12 +146,13 @@ export default function App() {
         cartCount={cart.length}
         localCartCount={localCartCount}
         handleLogout={handleLogout}
-        onChatToggle={() => setChatOpen((prev) => !prev)}
-        onChatClose={() => setChatOpen(false)}
+        onChatToggle={handleChatToggle}
+        onChatClose={handleChatClose}
       />
 
       {/* Контейнер, который при chatOpen делит экран: основной контент слева, чат справа */}
       <div
+        className={chatOpen ? "chatLayout chatOpen" : "chatLayout"}
         style={{
           display: "flex",
           flex: 1,
@@ -154,7 +167,6 @@ export default function App() {
             flex: chatOpen ? "0 0 66.666%" : "1 1 auto",
             overflow: "auto",
             minWidth: 0,
-            transition: "flex 0.25s ease",
           }}
         >
           <Routes>
@@ -258,7 +270,7 @@ export default function App() {
           </Routes>
         </div>
 
-        {/* Чат-панель (правый блок — 1/3 экрана) */}
+        {/* Чат-панель (правый блок) — показывается/скрывается мгновенно, без анимаций */}
         {chatOpen && (
           <div
             className="chatWrapper"
@@ -272,32 +284,31 @@ export default function App() {
               boxShadow: "-2px 0 8px rgba(0, 0, 0, 0.06)",
             }}
           >
-            <ChatWidget isOpen={chatOpen} onClose={() => setChatOpen(false)} />
+            <ChatWidget isOpen={true} onClose={handleChatClose} />
           </div>
         )}
       </div>
 
-      {chatOpen && (
-        <style>{`
-          body {
-            overflow: hidden;
-            height: 100%;
+      <style>{`
+        body {
+          overflow: hidden;
+          height: 100%;
+        }
+
+        @media (max-width: 768px) {
+          /* На мобильных когда чат ОТКРЫТ — скрываем основной контент и растягиваем чат на всю ширину */
+          .chatLayout.chatOpen .mainContent {
+            flex: 0 0 0% !important;
+            display: none !important;
           }
 
-          @media (max-width: 768px) {
-            .mainContent {
-              flex: 0 0 0% !important;
-              display: none !important;
-            }
-
-            .chatWrapper {
-              flex: 1 1 100% !important;
-              border-left: none !important;
-              box-shadow: none !important;
-            }
+          .chatLayout.chatOpen .chatWrapper {
+            flex: 1 1 100% !important;
+            border-left: none !important;
+            box-shadow: none !important;
           }
-        `}</style>
-      )}
+        }
+      `}</style>
     </div>
   );
 }
