@@ -34,9 +34,6 @@ from fastapi.responses import Response
 from app.domain.entities import User
 from pydantic import BaseModel
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 
 security = HTTPBearer()
@@ -708,7 +705,12 @@ def create_chat_router() -> APIRouter:
         ai_model = os.getenv("AI_TUNNEL_MODEL", "gpt-4o-mini")
         ai_base_url = os.getenv("AI_TUNNEL_BASE_URL", "https://api.aitunnel.ru/v1")
         
+        print(f"[CHAT DEBUG] AI_TUNNEL_API_KEY={'***' if ai_api_key else 'NOT SET'}")
+        print(f"[CHAT DEBUG] AI_TUNNEL_MODEL={ai_model}")
+        print(f"[CHAT DEBUG] AI_TUNNEL_BASE_URL={ai_base_url}")
+        
         if not ai_api_key:
+            print("[CHAT DEBUG] AI_TUNNEL_API_KEY is NOT SET - returning fallback message")
             return {
                 "role": "assistant",
                 "content": "Извините, AI-консультант временно не настроен. Пожалуйста, позвоните нам по телефону +7 (4852) 21-47-55.",

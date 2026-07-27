@@ -1,9 +1,6 @@
 import os
-from dotenv import load_dotenv
 from psycopg_pool import AsyncConnectionPool
 from typing import Any
-
-load_dotenv()
 
 
 DB_USER = os.getenv("DB_USER", "postgres")
