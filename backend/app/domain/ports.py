@@ -126,25 +126,6 @@ class CartRepositoryPort(ABC):
         pass
 
 
-class ChatRepositoryPort(ABC):
-    """Интерфейс для работы с историей чата."""
-
-    @abstractmethod
-    async def add_message(self, session_id: str, role: str, content: str) -> None:
-        """Сохранить сообщение в историю."""
-        pass
-
-    @abstractmethod
-    async def get_history(self, session_id: str, limit: int = 50) -> list[dict]:
-        """Получить историю сообщений сессии."""
-        pass
-
-    @abstractmethod
-    async def clear_history(self, session_id: str) -> None:
-        """Очистить историю сессии."""
-        pass
-
-
 class NoteRepositoryPort(ABC):
     @abstractmethod
     async def add(self, created_time: datetime, title: str, description: str, image_url: str | None = None) -> bool:
