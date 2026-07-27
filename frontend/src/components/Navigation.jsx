@@ -20,6 +20,7 @@ export default function Navigation({
     if (location.pathname === "/") return "catalog";
     if (location.pathname === "/discount") return "discount";
     if (location.pathname === "/notes") return "news";
+    if (location.pathname === "/how-to-drive") return "howtodrive";
     if (location.pathname === "/shop") return "shop";
     return null;
   })();
@@ -28,6 +29,7 @@ export default function Navigation({
     { id: "catalog", label: "Каталог", path: "/" },
     { id: "discount", label: "Скидки", path: "/discount", isRed: true },
     { id: "news", label: "Новости", path: "/notes", subLabel: "магазина" },
+    { id: "howtodrive", label: "Как проехать", path: "/how-to-drive" },
   ];
 
   const totalCartCount = (cartCount || 0) + (localCartCount || 0);

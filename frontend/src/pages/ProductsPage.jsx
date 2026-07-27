@@ -71,17 +71,6 @@ export default function ProductsPage({
     return products.filter((p) => (p.discount || 0) > 0);
   }, [products, discountedOnly]);
 
-  const categories = useMemo(() => {
-    const allCats = discountFiltered.flatMap((p) => p.categories || []);
-    const unique = [...new Set(allCats)];
-    const priority = ["для детей", "мужская", "женская"];
-    const priorityCats = priority.filter((cat) => unique.includes(cat));
-    const otherCats = unique
-      .filter((cat) => !priority.includes(cat))
-      .sort((a, b) => a.localeCompare(b));
-    return [...priorityCats, ...otherCats];
-  }, [discountFiltered]);
-
   // Только "другие" категории (не женская, мужская, для детей)
   const otherCategories = useMemo(() => {
     const allCats = discountFiltered.flatMap((p) => p.categories || []);
@@ -144,118 +133,60 @@ export default function ProductsPage({
     return isInLocalCart ? isInLocalCart(product.id) : false;
   };
 
-  // Стили
-  const styles = {
-    container: {
-      width: "100%",
-      maxWidth: "100%",
-      minHeight: "100vh",
-      padding: "0 24px",
-      boxSizing: "border-box",
-      fontFamily: "system-ui, -apple-system, sans-serif",
-    },
-    heading: {
-      fontSize: "22px",
-      fontWeight: "700",
-      color: "#12153a",
-      margin: "8px 0 24px 0",
-    },
-    filterWrapper: {
-      display: "flex",
-      flexWrap: "wrap",
-      gap: "8px",
-      marginBottom: "24px",
-      padding: "8px 0",
-    },
-    grid: {
-      display: "grid",
-      gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-      gap: "32px",
-      marginBottom: "40px",
-    },
-    empty: {
-      textAlign: "center",
-      padding: "40px 0",
-      fontSize: "18px",
-      color: "#64748b",
-    },
-    mobileTabBar: {
-      display: "none", // скрыто на десктопе
-    },
-  };
-
-  const allButtonStyle = {
-    padding: "10px 22px",
-    borderRadius: "30px",
+  // Кнопка категории для десктоп-сайдбара
+  const sidebarCatStyle = (active) => ({
+    display: "block",
+    width: "100%",
+    padding: "10px 16px",
     border: "none",
-    background:
-      selectedCategories.length === 0
-        ? "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)"
-        : "#f1f5f9",
-    color: selectedCategories.length === 0 ? "#fff" : "#475569",
+    background: active ? "#eef2ff" : "transparent",
+    color: active ? "#4f46e5" : "#475569",
     cursor: "pointer",
-    fontWeight: "600",
+    fontWeight: active ? 600 : 400,
     fontSize: "13px",
-    fontFamily:
-      '"Inter", "SF Pro Text", system-ui, -apple-system, sans-serif',
-    transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
-    outline: "none",
-    boxShadow:
-      selectedCategories.length === 0
-        ? "0 4px 14px rgba(124, 58, 237, 0.3)"
-        : "none",
-    letterSpacing: "0.06em",
-  };
+    textAlign: "left",
+    fontFamily: '"Inter", "SF Pro Text", system-ui, -apple-system, sans-serif',
+    borderRadius: "8px",
+    transition: "all 0.2s ease",
+    letterSpacing: "0.02em",
+  });
 
-  const filterButtonStyle = (cat) => ({
-    padding: "10px 22px",
-    borderRadius: "30px",
+  const sidebarTabStyle = (active) => ({
+    display: "block",
+    width: "100%",
+    padding: "10px 16px",
     border: "none",
-    background: selectedCategories.includes(cat)
-      ? "linear-gradient(135deg, #d97706 0%, #f59e0b 100%)"
-      : "#f1f5f9",
-    color: selectedCategories.includes(cat) ? "#fff" : "#475569",
+    background: active ? "#eef2ff" : "transparent",
+    color: active ? "#4f46e5" : "#475569",
     cursor: "pointer",
-    fontWeight: "600",
-    fontSize: "13px",
-    fontFamily:
-      '"Inter", "SF Pro Text", system-ui, -apple-system, sans-serif',
-    transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
-    outline: "none",
-    boxShadow: selectedCategories.includes(cat)
-      ? "0 4px 14px rgba(245, 158, 11, 0.3)"
-      : "none",
-    letterSpacing: "0.06em",
+    fontWeight: active ? 700 : 500,
+    fontSize: "14px",
+    textAlign: "left",
+    fontFamily: '"Inter", "SF Pro Text", system-ui, -apple-system, sans-serif',
+    borderRadius: "8px",
+    transition: "all 0.2s ease",
+    letterSpacing: "0.03em",
+    textTransform: "uppercase",
   });
 
   if (loading) {
     return (
-      <div style={styles.container}>
-        <div style={styles.empty}>Загрузка товаров...</div>
+      <div style={{ textAlign: "center", padding: "40px 0", fontSize: "18px", color: "#64748b", fontFamily: "system-ui, -apple-system, sans-serif" }}>
+        Загрузка товаров...
       </div>
     );
   }
 
   return (
-    <div style={styles.container}>
+    <>
       <style>{`
+        /* ===== МОБИЛКИ: табы сверху как sticky bar ===== */
         @media (max-width: 768px) {
-          .products-container {
-            padding: 0 12px !important;
+          .page-wrapper {
+            flex-direction: column !important;
           }
-          .products-grid {
-            grid-template-columns: repeat(2, 1fr) !important;
-            gap: 12px !important;
-            margin-bottom: 24px !important;
-          }
-          .filter-wrapper {
-            gap: 6px !important;
-            padding: 8px 10px !important;
-          }
-          .filter-btn {
-            font-size: 13px !important;
-            padding: 6px 14px !important;
-            border-radius: 30px !important;
+          .desktop-sidebar {
+            display: none !important;
           }
           .mobile-tab-bar {
             display: flex !important;
@@ -263,10 +194,8 @@ export default function ProductsPage({
             position: sticky;
             top: 0;
             z-index: 10;
-            background: white;
+            background: #fff;
             border-bottom: 1px solid #e2e8f0;
-            margin: 0 -24px 0;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
           }
           .mobile-tab-bar .main-tabs {
             display: flex;
@@ -277,138 +206,220 @@ export default function ProductsPage({
             flex-wrap: wrap;
             width: 100%;
             padding: 2px 0 6px 0;
-            justify-content: stretch;
           }
-          .desktop-filters {
-            display: none !important;
+          .products-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 12px !important;
           }
         }
+
+        /* ===== ДЕСКТОП: sidebar слева, товары справа ===== */
         @media (min-width: 769px) {
           .mobile-tab-bar {
             display: none !important;
           }
-          .desktop-filters {
-            display: flex !important;
+          .desktop-sidebar {
+            display: block !important;
+          }
+          .products-grid {
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important;
+            gap: 24px !important;
           }
         }
       `}</style>
 
-      {/* === Мобильные табы (основные + подкатегории) === */}
-      <div className="mobile-tab-bar">
-        <div className="main-tabs">
+      {/* Общая обёртка: на десктопе flex row, на мобилке column */}
+      <div
+        className="page-wrapper"
+        style={{
+          display: "flex",
+          minHeight: "100vh",
+          fontFamily: "system-ui, -apple-system, sans-serif",
+        }}
+      >
+
+        {/* ========== МОБИЛЬНЫЕ ТАБЫ (только на мобилках) ========== */}
+        <div className="mobile-tab-bar" style={{ display: "none" }}>
+          <div className="main-tabs">
+            {MOBILE_TABS.map((tab) => {
+              const isActive = mobileTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setMobileTab(isActive ? "" : tab.id)}
+                  style={{
+                    flex: 1,
+                    padding: "10px 4px",
+                    border: "none",
+                    background: "transparent",
+                    color: isActive ? "#4f46e5" : "#9ca3af",
+                    fontWeight: isActive ? 600 : 400,
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    fontFamily: '"Inter", "SF Pro Text", system-ui, sans-serif',
+                    letterSpacing: "0.04em",
+                    textTransform: "uppercase",
+                    transition: "all 0.2s",
+                    borderBottom: isActive ? "2px solid #4f46e5" : "2px solid transparent",
+                  }}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+          {otherCategories.length > 0 && (
+            <div className="sub-tabs">
+              {otherCategories.map((cat) => {
+                const isSelected = selectedCategories.includes(cat);
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => handleCategoryToggle(cat)}
+                    style={{
+                      flex: 1,
+                      padding: "5px 4px",
+                      border: "none",
+                      background: "transparent",
+                      color: isSelected ? "#64748b" : "#cbd5e1",
+                      fontWeight: isSelected ? 500 : 400,
+                      fontSize: "10px",
+                      cursor: "pointer",
+                      fontFamily: '"Inter", "SF Pro Text", system-ui, sans-serif',
+                      letterSpacing: "0.02em",
+                      textTransform: "uppercase",
+                      transition: "all 0.2s",
+                      borderBottom: isSelected ? "1.5px solid #94a3b8" : "1.5px solid transparent",
+                    }}
+                  >
+                    {cat}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ========== ДЕСКТОП-САЙДБАР (только на десктопе) ========== */}
+        <aside
+          className="desktop-sidebar"
+          style={{
+            display: "none",
+            width: "220px",
+            minWidth: "220px",
+            padding: "24px 16px",
+            borderRight: "1px solid #e2e8f0",
+            background: "#fafbfc",
+            position: "sticky",
+            top: 0,
+            height: "100vh",
+            overflowY: "auto",
+            boxSizing: "border-box",
+          }}
+        >
+          <div style={{ fontWeight: 700, fontSize: "12px", color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "12px", paddingLeft: "8px" }}>
+            Категории
+          </div>
+
+          {/* Основные табы: Женщинам / Мужчинам / Детям */}
           {MOBILE_TABS.map((tab) => {
             const isActive = mobileTab === tab.id;
             return (
               <button
                 key={tab.id}
                 onClick={() => setMobileTab(isActive ? "" : tab.id)}
-                style={{
-                  flex: 1,
-                  padding: "10px 4px",
-                  border: "none",
-                  background: "transparent",
-                  color: isActive ? "#4f46e5" : "#9ca3af",
-                  fontWeight: isActive ? 600 : 400,
-                  fontSize: "13px",
-                  cursor: "pointer",
-                  fontFamily: '"Inter", "SF Pro Text", system-ui, sans-serif',
-                  letterSpacing: "0.04em",
-                  textTransform: "uppercase",
-                  transition: "all 0.2s",
-                  borderBottom: isActive ? "2px solid #4f46e5" : "2px solid transparent",
-                }}
+                style={sidebarTabStyle(isActive)}
               >
-                {tab.label}
+                {tab.label} {isActive && "✓"}
               </button>
             );
           })}
-        </div>
 
-        {/* Подкатегории (помельче, серые) под основными табами */}
-        {otherCategories.length > 0 && (
-          <div className="sub-tabs">
-            {otherCategories.map((cat) => {
-              const isSelected = selectedCategories.includes(cat);
-              return (
-                <button
-                  key={cat}
-                  onClick={() => handleCategoryToggle(cat)}
-                  style={{
-                    flex: 1,
-                    padding: "5px 4px",
-                    border: "none",
-                    background: "transparent",
-                    color: isSelected ? "#64748b" : "#cbd5e1",
-                    fontWeight: isSelected ? 500 : 400,
-                    fontSize: "10px",
-                    cursor: "pointer",
-                    fontFamily: '"Inter", "SF Pro Text", system-ui, sans-serif',
-                    letterSpacing: "0.02em",
-                    textTransform: "uppercase",
-                    transition: "all 0.2s",
-                    borderBottom: isSelected ? "1.5px solid #94a3b8" : "1.5px solid transparent",
-                  }}
-                >
-                  {cat}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
+          {/* Разделитель */}
+          {otherCategories.length > 0 && (
+            <div style={{ margin: "16px 0 8px", borderTop: "1px solid #e2e8f0" }} />
+          )}
 
-      <div
-        className="products-container"
-        style={styles.container}
-      >
-        {/* Фильтры — скрываются на мобилках, где табы */}
-        {categories.length > 0 && (
-          <div
-            className="desktop-filters filter-wrapper"
-            style={styles.filterWrapper}
-          >
-            <button
-              className="filter-btn"
-              style={allButtonStyle}
-              onClick={handleClearCategories}
-            >
-              Все
-            </button>
-            {categories.map((cat) => (
+          {/* Подкатегории */}
+          {otherCategories.map((cat) => {
+            const isSelected = selectedCategories.includes(cat);
+            return (
               <button
                 key={cat}
-                className="filter-btn"
-                style={filterButtonStyle(cat)}
                 onClick={() => handleCategoryToggle(cat)}
+                style={sidebarCatStyle(isSelected)}
               >
-                {cat}
+                {cat} {isSelected && "✓"}
               </button>
-            ))}
-          </div>
-        )}
+            );
+          })}
 
-        {filteredProducts.length === 0 ? (
-          <div style={styles.empty}>
-            {discountedOnly
-              ? "Нет товаров со скидкой в выбранных категориях"
-              : "Товаров не найдено"}
-          </div>
-        ) : (
-          <div className="products-grid" style={styles.grid}>
-            {filteredProducts.map((p) => (
-              <ProductCard
-                key={p.id}
-                product={p}
-                isInCart={isInCartCombined(p)}
-                onAddToCart={addToCart}
-                userRole={userRole}
-                token={token}
-                onDelete={handleDeleteProduct}
-              />
-            ))}
-          </div>
-        )}
+          {/* Кнопка сброса всех фильтров */}
+          {(mobileTab || selectedCategories.length > 0) && (
+            <button
+              onClick={() => {
+                setMobileTab("");
+                handleClearCategories();
+              }}
+              style={{
+                display: "block",
+                width: "100%",
+                marginTop: "16px",
+                padding: "8px 16px",
+                border: "1px solid #e2e8f0",
+                borderRadius: "8px",
+                background: "transparent",
+                color: "#ef4444",
+                cursor: "pointer",
+                fontWeight: 500,
+                fontSize: "12px",
+                fontFamily: '"Inter", "SF Pro Text", system-ui, -apple-system, sans-serif',
+                transition: "all 0.2s",
+              }}
+            >
+              ✕ Сбросить фильтры
+            </button>
+          )}
+        </aside>
+
+        {/* ========== ОСНОВНОЙ КОНТЕНТ: товары ========== */}
+        <main
+          style={{
+            flex: 1,
+            padding: "24px",
+            boxSizing: "border-box",
+            minWidth: 0,
+          }}
+        >
+          {filteredProducts.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "40px 0", fontSize: "18px", color: "#64748b" }}>
+              {discountedOnly
+                ? "Нет товаров со скидкой в выбранных категориях"
+                : "Товаров не найдено"}
+            </div>
+          ) : (
+            <div
+              className="products-grid"
+              style={{
+                display: "grid",
+                marginBottom: "40px",
+              }}
+            >
+              {filteredProducts.map((p) => (
+                <ProductCard
+                  key={p.id}
+                  product={p}
+                  isInCart={isInCartCombined(p)}
+                  onAddToCart={addToCart}
+                  userRole={userRole}
+                  token={token}
+                  onDelete={handleDeleteProduct}
+                />
+              ))}
+            </div>
+          )}
+        </main>
       </div>
-    </div>
+    </>
   );
 }
