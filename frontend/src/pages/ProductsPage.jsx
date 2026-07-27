@@ -1,6 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { getFinalPrice, formatPrice } from "../utils/price";
+import { useSearchParams } from "react-router-dom";
+import ProductCard from "../components/ProductCard.jsx";
+
+const MOBILE_TABS = [
+  { id: "женская", label: "Женщинам" },
+  { id: "мужская", label: "Мужчинам" },
+  { id: "для детей", label: "Детям" },
+];
 
 export default function ProductsPage({
   API_URL,
@@ -8,10 +14,11 @@ export default function ProductsPage({
   token,
   userRole,
   cart = [],
+  isInLocalCart,
   discountedOnly = false,
 }) {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [mobileTab, setMobileTab] = useState("");
 
   const selectedCategories = searchParams.getAll("category");
 
@@ -38,15 +45,6 @@ export default function ProductsPage({
     }
     loadAllProducts();
   }, [API_URL]);
-
-  function getProductImages(product) {
-    const fromArray = Array.isArray(product.image_urls)
-      ? product.image_urls.filter(Boolean)
-      : [];
-    if (fromArray.length > 0) return fromArray;
-    if (product.image_url) return [product.image_url];
-    return ["/placeholder.png"];
-  }
 
   async function handleDeleteProduct(productId) {
     if (!window.confirm("Вы уверены, что хотите навсегда удалить этот товар?"))
@@ -85,13 +83,23 @@ export default function ProductsPage({
   }, [discountFiltered]);
 
   const filteredProducts = useMemo(() => {
-    if (selectedCategories.length === 0) return discountFiltered;
-    return discountFiltered.filter(
-      (p) =>
-        p.categories &&
-        p.categories.some((cat) => selectedCategories.includes(cat)),
-    );
-  }, [discountFiltered, selectedCategories]);
+    // Сначала применяем мобильный таб
+    let result = discountFiltered;
+    if (mobileTab) {
+      result = result.filter(
+        (p) => p.categories && p.categories.includes(mobileTab)
+      );
+    }
+    // Затем применяем фильтр категорий из URL
+    if (selectedCategories.length > 0) {
+      result = result.filter(
+        (p) =>
+          p.categories &&
+          p.categories.some((cat) => selectedCategories.includes(cat))
+      );
+    }
+    return result;
+  }, [discountFiltered, selectedCategories, mobileTab]);
 
   const handleCategoryToggle = (cat) => {
     setSearchParams((prev) => {
@@ -117,6 +125,13 @@ export default function ProductsPage({
       newParams.delete("category");
       return newParams;
     });
+  };
+
+  const isInCartCombined = (product) => {
+    if (token) {
+      return cart.some((item) => String(item.id) === String(product.id));
+    }
+    return isInLocalCart ? isInLocalCart(product.id) : false;
   };
 
   // Стили
@@ -148,102 +163,14 @@ export default function ProductsPage({
       gap: "32px",
       marginBottom: "40px",
     },
-    card: {
-      backgroundColor: "rgba(255, 255, 255, 0.75)",
-      backdropFilter: "blur(8px)",
-      borderRadius: "20px",
-      overflow: "hidden",
-      boxShadow: "0 4px 30px rgba(0, 0, 0, 0.03)",
-      border: "1px solid rgba(255, 255, 255, 0.6)",
-      display: "flex",
-      flexDirection: "column",
-      position: "relative",
-      cursor: "pointer",
-    },
-    badge: {
-      position: "absolute",
-      top: "12px",
-      right: "12px",
-      backgroundColor: "#dc2626",
-      color: "#fff",
-      fontSize: "12px",
-      fontWeight: "700",
-      padding: "4px 10px",
-      borderRadius: "8px",
-      zIndex: 1,
-    },
-    imgContainer: {
-      width: "100%",
-      height: "240px",
-      backgroundColor: "#ffffff",
-      padding: "20px",
-      boxSizing: "border-box",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      borderBottom: "1px solid #f1f5f9",
-    },
-    img: { maxWidth: "100%", maxHeight: "100%", objectFit: "contain" },
-    content: {
-      padding: "24px",
-      display: "flex",
-      flexDirection: "column",
-      flexGrow: 1,
-    },
-    title: {
-      margin: "0 0 8px 0",
-      fontSize: "19px",
-      fontWeight: "700",
-      color: "#0f172a",
-      letterSpacing: "-0.3px",
-    },
-    desc: {
-      fontSize: "14px",
-      color: "#475569",
-      margin: "0 0 24px 0",
-      flexGrow: 1,
-      lineHeight: "1.6",
-    },
-    price: {
-      fontSize: "24px",
-      fontWeight: "800",
-      color: "#0f172a",
-      marginBottom: "20px",
-    },
-    oldPrice: {
-      fontSize: "14px",
-      fontWeight: "500",
-      color: "#94a3b8",
-      textDecoration: "line-through",
-      marginRight: "8px",
-    },
-    buyBtn: {
-      padding: "14px",
-      fontSize: "14px",
-      fontWeight: "600",
-      color: "#ffffff",
-      border: "none",
-      borderRadius: "12px",
-      cursor: "pointer",
-      width: "100%",
-    },
-    deleteBtn: {
-      padding: "12px",
-      fontSize: "14px",
-      fontWeight: "600",
-      color: "#ef4444",
-      backgroundColor: "rgba(239, 68, 68, 0.06)",
-      border: "none",
-      borderRadius: "12px",
-      cursor: "pointer",
-      width: "100%",
-      marginTop: "12px",
-    },
     empty: {
       textAlign: "center",
       padding: "40px 0",
       fontSize: "18px",
       color: "#64748b",
+    },
+    mobileTabBar: {
+      display: "none", // скрыто на десктопе
     },
   };
 
@@ -251,19 +178,22 @@ export default function ProductsPage({
     padding: "10px 22px",
     borderRadius: "30px",
     border: "none",
-    background: selectedCategories.length === 0
-      ? "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)"
-      : "#f1f5f9",
+    background:
+      selectedCategories.length === 0
+        ? "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)"
+        : "#f1f5f9",
     color: selectedCategories.length === 0 ? "#fff" : "#475569",
     cursor: "pointer",
     fontWeight: "600",
     fontSize: "13px",
-    fontFamily: '"Inter", "SF Pro Text", system-ui, -apple-system, sans-serif',
+    fontFamily:
+      '"Inter", "SF Pro Text", system-ui, -apple-system, sans-serif',
     transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
     outline: "none",
-    boxShadow: selectedCategories.length === 0
-      ? "0 4px 14px rgba(124, 58, 237, 0.3)"
-      : "none",
+    boxShadow:
+      selectedCategories.length === 0
+        ? "0 4px 14px rgba(124, 58, 237, 0.3)"
+        : "none",
     letterSpacing: "0.06em",
   };
 
@@ -278,7 +208,8 @@ export default function ProductsPage({
     cursor: "pointer",
     fontWeight: "600",
     fontSize: "13px",
-    fontFamily: '"Inter", "SF Pro Text", system-ui, -apple-system, sans-serif',
+    fontFamily:
+      '"Inter", "SF Pro Text", system-ui, -apple-system, sans-serif',
     transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
     outline: "none",
     boxShadow: selectedCategories.includes(cat)
@@ -298,7 +229,7 @@ export default function ProductsPage({
   return (
     <div style={styles.container}>
       <style>{`
-        @media (max-width: 600px) {
+        @media (max-width: 768px) {
           .products-container {
             padding: 0 12px !important;
           }
@@ -307,52 +238,88 @@ export default function ProductsPage({
             gap: 12px !important;
             margin-bottom: 24px !important;
           }
-          .product-card {
-            border-radius: 14px !important;
-          }
-          .product-img-container {
-            height: 140px !important;
-            padding: 10px !important;
-          }
-          .product-content {
-            padding: 12px !important;
-          }
-          .product-title {
-            font-size: 14px !important;
-            margin-bottom: 4px !important;
-          }
-          .product-desc {
-            font-size: 12px !important;
-            margin-bottom: 12px !important;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-          }
-          .product-price {
-            font-size: 16px !important;
-            margin-bottom: 12px !important;
-          }
-          .product-buy-btn, .product-delete-btn {
-            padding: 10px 6px !important;
-            font-size: 12px !important;
-            border-radius: 8px !important;
-          }
           .filter-wrapper {
             gap: 6px !important;
             padding: 8px 10px !important;
           }
           .filter-btn {
-            font-size: 16px !important;   /* Увеличили шрифт */
-            padding: 10px 20px !important; /* Увеличили отступы для удобного тапа */
+            font-size: 13px !important;
+            padding: 6px 14px !important;
             border-radius: 30px !important;
+          }
+          .mobile-tab-bar {
+            display: flex !important;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0 0;
+            margin: 0 -24px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+          }
+          .desktop-filters {
+            display: none !important;
+          }
+        }
+        @media (min-width: 769px) {
+          .mobile-tab-bar {
+            display: none !important;
+          }
+          .desktop-filters {
+            display: flex !important;
           }
         }
       `}</style>
 
-      <div className="products-container" style={styles.container}>
+      {/* === Мобильные табы: жёстко фиксируются сверху === */}
+      <div className="mobile-tab-bar">
+        <div style={{
+          display: "flex",
+          width: "100%",
+          justifyContent: "stretch",
+        }}>
+          {MOBILE_TABS.map((tab) => {
+            const isActive = mobileTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() =>
+                  setMobileTab(isActive ? "" : tab.id)
+                }
+                style={{
+                  flex: 1,
+                  padding: "10px 4px",
+                  border: "none",
+                  background: "transparent",
+                  color: isActive ? "#4f46e5" : "#9ca3af",
+                  fontWeight: isActive ? 600 : 400,
+                  fontSize: "13px",
+                  cursor: "pointer",
+                  fontFamily: '"Inter", "SF Pro Text", system-ui, sans-serif',
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  transition: "all 0.2s",
+                  borderBottom: isActive ? "2px solid #4f46e5" : "2px solid transparent",
+                }}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div
+        className="products-container"
+        style={styles.container}
+      >
+        {/* Фильтры — скрываются на мобилках, где табы */}
         {categories.length > 0 && (
-          <div className="filter-wrapper" style={styles.filterWrapper}>
+          <div
+            className="desktop-filters filter-wrapper"
+            style={styles.filterWrapper}
+          >
             <button
               className="filter-btn"
               style={allButtonStyle}
@@ -381,85 +348,17 @@ export default function ProductsPage({
           </div>
         ) : (
           <div className="products-grid" style={styles.grid}>
-            {filteredProducts.map((p) => {
-              const isInCart = cart.some(
-                (item) => String(item.id) === String(p.id),
-              );
-              const discount = p.discount || 0;
-              const finalPrice = getFinalPrice(p.price, discount);
-              const images = getProductImages(p);
-              const firstImage = images[0] || "/placeholder.png";
-
-              return (
-                <div
-                  key={p.id}
-                  className="product-card"
-                  style={styles.card}
-                  onClick={() => navigate(`/products/${p.id}`)}
-                >
-                  {discount > 0 && (
-                    <span style={styles.badge}>-{discount}%</span>
-                  )}
-                  <div
-                    className="product-img-container"
-                    style={styles.imgContainer}
-                  >
-                    <img src={firstImage} alt={p.title} style={styles.img} />
-                  </div>
-                  <div className="product-content" style={styles.content}>
-                    <h4 className="product-title" style={styles.title}>
-                      {p.title}
-                    </h4>
-                    <p className="product-desc" style={styles.desc}>
-                      {p.description}
-                    </p>
-
-                    <div className="product-price" style={styles.price}>
-                      {discount > 0 && (
-                        <span style={styles.oldPrice}>
-                          {formatPrice(p.price)} ₽
-                        </span>
-                      )}
-                      {formatPrice(finalPrice)} ₽
-                    </div>
-
-                    {token && (
-                      <button
-                        className="product-buy-btn"
-                        style={{
-                          ...styles.buyBtn,
-                          backgroundColor: isInCart ? "#64748b" : "#10b981",
-                          cursor: isInCart ? "default" : "pointer",
-                          boxShadow: isInCart
-                            ? "none"
-                            : "0 4px 12px rgba(16, 185, 129, 0.15)",
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (!isInCart) addToCart(p);
-                        }}
-                        disabled={isInCart}
-                      >
-                        {isInCart ? "✓ В корзине" : "🛒 В корзину"}
-                      </button>
-                    )}
-
-                    {token && userRole === "admin" && (
-                      <button
-                        className="product-delete-btn"
-                        style={styles.deleteBtn}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteProduct(p.id);
-                        }}
-                      >
-                        🗑️ Удалить
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+            {filteredProducts.map((p) => (
+              <ProductCard
+                key={p.id}
+                product={p}
+                isInCart={isInCartCombined(p)}
+                onAddToCart={addToCart}
+                userRole={userRole}
+                token={token}
+                onDelete={handleDeleteProduct}
+              />
+            ))}
           </div>
         )}
       </div>

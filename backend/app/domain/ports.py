@@ -105,7 +105,7 @@ class ProductRepositoryPort(ABC):
     @abstractmethod
     async def get_all_ids(self) -> list[int]:
         """Получить список ID всех товаров (для sitemap)."""
-ь        pass
+        pass
 
 
 class CartRepositoryPort(ABC):

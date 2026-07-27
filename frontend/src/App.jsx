@@ -13,6 +13,7 @@ import NoteDetailPage from "./pages/NoteDetailPage.jsx";
 import ProductPage from "./pages/ProductPage";
 import HowToDrivePage from "./pages/HowToDrivePage";
 import ChatWidget from "./components/ChatWidget.jsx";
+import useLocalCart from "./hooks/useLocalCart.js";
 
 export default function App() {
   const API_URL = "/api";
@@ -20,6 +21,15 @@ export default function App() {
   const [profile, setProfile] = useState(null);
   const [cart, setCart] = useState([]);
   const [chatOpen, setChatOpen] = useState(false);
+
+  const {
+    localCart,
+    addToLocalCart,
+    clearLocalCart,
+    isInLocalCart,
+    syncToServer,
+    localCartCount,
+  } = useLocalCart();
 
   function handleLogout() {
     localStorage.removeItem("token");
@@ -44,20 +54,23 @@ export default function App() {
   }
 
   async function addToCart(product) {
-    if (!token) return;
-    try {
-      const response = await fetch(`${API_URL}/cart/${product.id}`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        setCart((prev) => {
-          if (prev.some((item) => item.id === product.id)) return prev;
-          return [...prev, product];
+    if (token) {
+      try {
+        const response = await fetch(`${API_URL}/cart/${product.id}`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
         });
+        if (response.ok) {
+          setCart((prev) => {
+            if (prev.some((item) => item.id === product.id)) return prev;
+            return [...prev, product];
+          });
+        }
+      } catch (err) {
+        console.error(err);
       }
-    } catch (err) {
-      console.error(err);
+    } else {
+      addToLocalCart(product);
     }
   }
 
@@ -87,6 +100,9 @@ export default function App() {
         if (response.ok) {
           setProfile(data);
           fetchCart(token);
+          if (localCart.length > 0) {
+            syncToServer(token, API_URL);
+          }
         } else {
           handleLogout();
         }
@@ -95,6 +111,7 @@ export default function App() {
       }
     }
     if (token) loadProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, API_URL]);
 
   return (
@@ -104,17 +121,31 @@ export default function App() {
           "linear-gradient(135deg, #d3eaf5 0%, #faf4f4 50%, #f2f2e1 100%)",
         minHeight: "100vh",
         boxSizing: "border-box",
+        overflow: chatOpen ? "hidden" : "visible",
+        height: chatOpen ? "100vh" : "auto",
+        maxHeight: chatOpen ? "100vh" : "none",
+        display: chatOpen ? "flex" : "block",
+        flexDirection: chatOpen ? "column" : undefined,
       }}
     >
       <Navigation
         token={token}
         userRole={profile?.role || "user"}
         cartCount={cart.length}
+        localCartCount={localCartCount}
         handleLogout={handleLogout}
         onChatToggle={() => setChatOpen((prev) => !prev)}
+        onChatClose={() => setChatOpen(false)}
       />
 
-      <Routes>
+      <ChatWidget isOpen={chatOpen} onClose={() => setChatOpen(false)} />
+
+      <div
+        style={{
+          display: chatOpen ? "none" : "block",
+        }}
+      >
+        <Routes>
         <Route
           path="/"
           element={
@@ -124,6 +155,8 @@ export default function App() {
               token={token}
               userRole={profile?.role || "user"}
               cart={cart}
+              localCart={localCart}
+              isInLocalCart={isInLocalCart}
             />
           }
         />
@@ -136,6 +169,8 @@ export default function App() {
               token={token}
               userRole={profile?.role || "user"}
               cart={cart}
+              localCart={localCart}
+              isInLocalCart={isInLocalCart}
               discountedOnly
             />
           }
@@ -181,7 +216,7 @@ export default function App() {
             token ? (
               <CartPage cart={cart} clearCart={clearCart} />
             ) : (
-              <Navigate to="/login" />
+              <CartPage cart={localCart} clearCart={clearLocalCart} isLocal />
             )
           }
         />
@@ -207,9 +242,18 @@ export default function App() {
             )
           }
         />
-      </Routes>
 
-      <ChatWidget isOpen={chatOpen} onClose={() => setChatOpen(false)} />
+        </Routes>
+      </div>
+
+      {chatOpen && (
+        <style>{`
+          body {
+            overflow: hidden;
+            height: 100%;
+          }
+        `}</style>
+      )}
     </div>
   );
 }

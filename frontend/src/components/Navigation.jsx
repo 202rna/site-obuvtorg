@@ -1,215 +1,251 @@
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import styles from "./Navigation.module.css";
 import logoImg from "../assets/logo-no-bg.png";
-import saleImg from "../assets/sale.png";
-import saleImgClick from "../assets/sale_click.png";
-import catalogLogo from "../assets/catalog_logo.png";
-import catalogLogoClick from "../assets/catalog_logo_click.png";
-import newsImg from "../assets/news.png";
-import newsImgClick from "../assets/news_click.png";
 
 export default function Navigation({
   token,
   userRole,
   cartCount,
   handleLogout,
+  localCartCount = 0,
   onChatToggle,
+  onChatClose,
 }) {
   const location = useLocation();
-  const isCatalog = location.pathname === "/";
-  const isDiscount = location.pathname === "/discount";
-  const isNotes = location.pathname === "/notes";
+  const [hoveredLink, setHoveredLink] = useState(null);
+
+  // Определяем активный пункт
+  const activeLink = (() => {
+    if (location.pathname === "/") return "catalog";
+    if (location.pathname === "/discount") return "discount";
+    if (location.pathname === "/notes") return "news";
+    if (location.pathname === "/shop") return "shop";
+    return null;
+  })();
+
+  const navLinks = [
+    { id: "catalog", label: "Каталог", path: "/" },
+    { id: "discount", label: "Скидки", path: "/discount", isRed: true },
+    { id: "news", label: "Новости", path: "/notes", subLabel: "магазина" },
+  ];
+
+  const totalCartCount = (cartCount || 0) + (localCartCount || 0);
 
   return (
-    <nav className={styles.nav}>
-      {/* Верхняя строка: логотип + контакты */}
-      <div className={styles.topRow}>
-        <div className={styles.brandBlock}>
-          <Link to="/" className={styles.logo}>
-            <img
-              src={logoImg}
-              alt="ООО ФИРМА ОБУВЬТОРГ"
-              style={{
-                display: "block",
-                width: "clamp(100px, 20vw, 180px)",
-                height: "auto",
-                maxHeight: "clamp(100px, 12vh, 140px)",
-                objectFit: "contain",
-              }}
-            />
-          </Link>
-          <div className={styles.contacts}>
-            <span
-              style={{
-                fontSize: "0.75rem",
-                color: "#777777",
-                letterSpacing: "0.05em",
-                fontVariant: "small-caps",
-                fontWeight: "500",
-                marginBottom: "1px",
-              }}
-            >
-              для заказа и консультации:
-            </span>
+    <>
+      <nav className={styles.nav}>
+        {/* Верхняя строка: логотип + контакты + мобильные действия */}
+        <div className={styles.topRow}>
+          <div className={styles.brandBlock}>
+            <Link to="/" className={styles.logo}>
+              <img
+                src={logoImg}
+                alt="ООО ФИРМА ОБУВЬТОРГ"
+                style={{
+                  display: "block",
+                  width: "clamp(100px, 20vw, 180px)",
+                  height: "auto",
+                  maxHeight: "clamp(100px, 12vh, 140px)",
+                  objectFit: "contain",
+                }}
+              />
+            </Link>
+            <div className={styles.contacts}>
+              <span
+                style={{
+                  fontSize: "0.75rem",
+                  color: "#777777",
+                  letterSpacing: "0.05em",
+                  fontVariant: "small-caps",
+                  fontWeight: "500",
+                  marginBottom: "1px",
+                }}
+              >
+                для заказа и консультации:
+              </span>
 
-            <a href="tel:+74852214755" className={styles.phone}>
-              📞 +7 (4852) 21-47-55
-            </a>
+              <a href="tel:+74852214755" className={styles.phone}>
+                📞 +7 (4852) 21-47-55
+              </a>
 
-            <span>
-              150049, Ярославская область, г. Ярославль, ул. Вспольинское Поле,
-              д. 18
-            </span>
+              <span>
+                150049, Ярославская область, г. Ярославль, ул. Вспольинское Поле,
+                д. 18
+              </span>
 
-            <span
-              style={{ fontSize: "0.85rem", color: "#888", marginTop: "2px" }}
-            >
-              🕒 Вт. – Пт. 09:00–17:00, Cб. 09:00–16:00{" "}
-              <span style={{ whiteSpace: "nowrap" }}>| Вс.– Пн. выходной</span>
-            </span>
+              <span
+                style={{ fontSize: "0.85rem", color: "#888", marginTop: "2px" }}
+              >
+                🕒 Вт. – Пт. 09:00–17:00, Cб. 09:00–16:00{" "}
+                <span style={{ whiteSpace: "nowrap" }}>| Вс.– Пн. выходной</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Мобильные действия (корзина + войти) — рядом с логотипом */}
+          <div className={styles.mobileTopActions}>
+            <Link to={token ? "/cart" : "/login"} className={styles.cartBtn}>
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="9" cy="21" r="1" />
+                <circle cx="20" cy="21" r="1" />
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+              </svg>
+              {totalCartCount > 0 && (
+                <span className={styles.cartBadge}>{totalCartCount}</span>
+              )}
+            </Link>
+            {token ? (
+              <button className={styles.btnOut} onClick={handleLogout}>
+                Выйти
+              </button>
+            ) : (
+              <Link to="/login" className={styles.btnIn}>
+                Войти
+              </Link>
+            )}
           </div>
         </div>
-      </div>
 
-      {/* Нижняя строка: ссылки + кнопка */}
-      <div className={styles.bottomRow}>
-        <div className={styles.links}>
-          {/* Каталог */}
-          <Link
-            to="/"
-            className={styles.activeLink}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "90px", // фиксированная ширина
-              height: "52px",
-              padding: "0 8px",
-            }}
-          >
-            <img
-              src={isCatalog ? catalogLogoClick : catalogLogo}
-              alt="Каталог"
-              style={{
-                display: "block",
-                maxHeight: "48px",
-                maxWidth: "100%",
-                width: "auto",
-                height: "auto",
-                objectFit: "contain",
-              }}
-            />
-          </Link>
+        {/* Нижняя строка: навигационные ссылки + правая панель */}
+        <div className={styles.bottomRow}>
+          <div className={styles.navLinks}>
+            {navLinks.map((link) => {
+              const isActive = activeLink === link.id;
+              const isHovered = hoveredLink === link.id;
 
-          {/* Акция */}
-          <Link
-            to="/discount"
-            className={styles.link}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "90px", // фиксированная ширина
-              height: "52px",
-              padding: "0 8px",
-            }}
-          >
-            <img
-              src={isDiscount ? saleImgClick : saleImg}
-              alt="Акция"
-              style={{
-                display: "block",
-                maxHeight: "38px",
-                maxWidth: "100%",
-                width: "auto",
-                height: "auto",
-                objectFit: "contain",
-              }}
-            />
-          </Link>
+              return (
+                <Link
+                  key={link.id}
+                  to={link.path}
+                  className={styles.navLink}
+                  onClick={onChatClose}
+                  style={{
+                    opacity:
+                      hoveredLink !== null && !isHovered ? 0.4 : 1,
+                    color:
+                      isHovered || isActive
+                        ? "#000000"
+                        : link.isRed
+                          ? "#dc2626"
+                          : "#4b5563",
+                    transition:
+                      "opacity 0.25s ease, color 0.25s ease",
+                  }}
+                  onMouseEnter={() => setHoveredLink(link.id)}
+                  onMouseLeave={() => setHoveredLink(null)}
+                >
+                  <span style={{ fontWeight: 700 }}>
+                    {link.label}
+                  </span>
+                  {link.subLabel && (
+                    <span className={styles.navSublabel}>
+                      {link.subLabel}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
 
-          {/* Новости */}
-          <Link
-            to="/notes"
-            className={styles.link}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "60px",
-              height: "32px",
-              padding: "0 4px",
-            }}
-          >
-            <img
-              src={isNotes ? newsImgClick : newsImg}
-              alt="Новости"
-              style={{
-                display: "block",
-                maxHeight: "40px",
-                maxWidth: "100%",
-                width: "auto",
-                height: "auto",
-                objectFit: "contain",
+          <div className={styles.rightBlock}>
+            {/* Кнопка AI-чата - desktop: overlay toggle */}
+            <button
+              className={styles.chatToggleBtn}
+              onClick={() => {
+                onChatToggle();
+                // Если чат закрывается — не делаем доп. действий
               }}
-            />
-          </Link>
-          <Link
-            to="/how-to-drive"
-            className={`${styles.link} ${styles.italic}`}
-          >
-            🗺️ Как проехать
-          </Link>
-          <span className={styles.separator}>|</span>
-          {token && (
-            <Link to="/profile" className={`${styles.link} ${styles.italic}`}>
-              Профиль
-            </Link>
-          )}
-          {token && <span className={styles.separator}>|</span>}
-          {token && (
-            <Link to="/cart" className={`${styles.link} ${styles.italic}`}>
-              🛒 Корзина <span className={styles.badge}>{cartCount}</span>
-            </Link>
-          )}
-          {token && userRole === "admin" && (
-            <>
-              <Link
-                to="/admin"
-                className={`${styles.link} ${styles.adminLink}`}
+              aria-label="Открыть чат с консультантом"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ flexShrink: 0 }}
               >
-                🛠️ Админка
-              </Link>
-              <Link
-                to="/admin/notes"
-                className={`${styles.link} ${styles.adminLink}`}
-              >
-                📄 Заметки
-              </Link>
-            </>
-          )}
-        </div>
-
-        <div className={styles.rightBlock}>
-          <button className={styles.aiButton} onClick={onChatToggle}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6, flexShrink: 0 }}>
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              <path d="M12 8v4" />
-              <path d="M12 16h.01" />
-            </svg>
-            Подобрать обувь по описанию
-          </button>
-          {token ? (
-            <button className={styles.btnOut} onClick={handleLogout}>
-              Выйти
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+              <span>AI Подбор обуви</span>
             </button>
-          ) : (
-            <Link to="/login" className={styles.btnIn}>
-              Войти
+
+            {/* Иконка корзины — всегда видна (и для авторизованных, и для нет) */}
+            <Link to={token ? "/cart" : "/login"} className={styles.cartBtn}>
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="9" cy="21" r="1" />
+                <circle cx="20" cy="21" r="1" />
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+              </svg>
+              {totalCartCount > 0 && (
+                <span className={styles.cartBadge}>{totalCartCount}</span>
+              )}
             </Link>
-          )}
+
+            {/* Войти / Выйти */}
+            {token ? (
+              <button className={styles.btnOut} onClick={handleLogout}>
+                Выйти
+              </button>
+            ) : (
+              <Link to="/login" className={styles.btnIn}>
+                Войти
+              </Link>
+            )}
+
+            {token && userRole === "admin" && (
+              <Link to="/admin" className={styles.adminBtn}>
+                Админ
+              </Link>
+            )}
+          </div>
         </div>
+      </nav>
+
+      {/* Мобильная панель: AI-подборщик на всю ширину */}
+      <div className={styles.mobileChatBar}>
+        <button
+          className={styles.mobileChatBtn}
+          onClick={onChatToggle}
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ flexShrink: 0 }}
+          >
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
+          AI Подбор обуви под описание
+        </button>
       </div>
-    </nav>
+    </>
   );
 }
