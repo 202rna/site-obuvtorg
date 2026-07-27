@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from app.domain.ports import ProductRepositoryPort, NoteRepositoryPort
 
 
-SHOP_DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "static", "shop_data.json")
+SHOP_DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "static", "shop_data.json")
 
 
 async def generate_shop_data(
