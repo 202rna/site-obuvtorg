@@ -216,9 +216,14 @@ export default function Navigation({
             )}
 
             {token && userRole === "admin" && (
-              <Link to="/admin" className={styles.adminBtn}>
-                Админ
-              </Link>
+              <>
+                <Link to="/admin" className={styles.adminBtn}>
+                  Админ
+                </Link>
+                <Link to="/admin/notes" className={styles.adminBtn}>
+                  Публикации
+                </Link>
+              </>
             )}
           </div>
         </div>

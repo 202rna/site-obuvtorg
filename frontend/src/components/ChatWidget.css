@@ -150,8 +150,179 @@
   padding: 10px 14px;
   font-size: 14px;
   line-height: 1.5;
-  white-space: pre-wrap;
+  white-space: normal;
   word-wrap: break-word;
+  overflow: visible;
+}
+
+/* ===== Markdown внутри сообщений ===== */
+
+/* Контейнер для markdown — наследует от messageBubble */
+.messageBubble * {
+  max-width: 100%;
+}
+
+/* Параграфы */
+.messageBubble p {
+  margin: 4px 0;
+}
+
+/* Заголовки */
+.messageBubble h1,
+.messageBubble h2,
+.messageBubble h3,
+.messageBubble h4 {
+  margin: 8px 0 4px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.messageBubble h1 { font-size: 16px; }
+.messageBubble h2 { font-size: 15px; }
+.messageBubble h3 { font-size: 14px; }
+.messageBubble h4 { font-size: 14px; }
+
+/* Жирный, курсив */
+.messageBubble strong {
+  font-weight: 700;
+}
+.messageBubble em {
+  font-style: italic;
+}
+
+/* Списки */
+.messageBubble ul,
+.messageBubble ol {
+  padding-left: 20px;
+  margin: 4px 0;
+}
+.messageBubble li {
+  margin: 2px 0;
+}
+.messageBubble li > p {
+  margin: 0;
+}
+
+/* Вложенные списки */
+.messageBubble ul ul,
+.messageBubble ol ol,
+.messageBubble ul ol,
+.messageBubble ol ul {
+  margin: 0;
+}
+
+/* Код */
+.messageBubble code {
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+  font-size: 13px;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  word-break: break-word;
+}
+.messageBubble pre {
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 6px 0;
+}
+.messageBubble pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* Цитаты */
+.messageBubble blockquote {
+  border-left: 3px solid #cbd5e1;
+  padding-left: 10px;
+  margin: 6px 0;
+  color: #475569;
+  font-style: italic;
+}
+
+/* Горизонтальная линия */
+.messageBubble hr {
+  border: none;
+  border-top: 1px solid #e2e8f0;
+  margin: 8px 0;
+}
+
+/* Таблицы */
+.messageBubble table {
+  border-collapse: collapse;
+  margin: 6px 0;
+  font-size: 13px;
+  width: 100%;
+}
+.messageBubble th,
+.messageBubble td {
+  border: 1px solid #e2e8f0;
+  padding: 4px 8px;
+  text-align: left;
+}
+.messageBubble th {
+  background: #f1f5f9;
+  font-weight: 600;
+}
+
+/* Изображения в markdown */
+.messageBubble img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 8px 0;
+  display: block;
+}
+
+/* Ссылки */
+.messageBubble a:not(.productLink) {
+  color: #4f46e5;
+  text-decoration: underline;
+  word-break: break-word;
+}
+.messageBubble a:not(.productLink):hover {
+  color: #4338ca;
+}
+
+/* Стили для вариантов (checkbox) */
+.messageBubble input[type="checkbox"] {
+  margin: 0 6px 0 0;
+}
+
+/* Кнопка для копирования кода */
+.messageBubble pre {
+  position: relative;
+}
+
+/* Адаптация пользовательских сообщений под markdown */
+.userMessage .messageBubble code {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+.userMessage .messageBubble pre {
+  background: rgba(0, 0, 0, 0.2);
+  color: #ffffff;
+}
+.userMessage .messageBubble blockquote {
+  border-left-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.85);
+}
+.userMessage .messageBubble table th {
+  background: rgba(255, 255, 255, 0.1);
+}
+.userMessage .messageBubble table th,
+.userMessage .messageBubble table td {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.userMessage .messageBubble a:not(.productLink) {
+  color: #a5b4fc;
+}
+.userMessage .messageBubble hr {
+  border-top-color: rgba(255, 255, 255, 0.2);
 }
 
 /* Ссылки на товары */

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
 import "./ChatWidget.css";
 
 const API_URL = "/api";
@@ -98,25 +99,44 @@ export default function ChatWidget({ isOpen, onClose }) {
     }
   }
 
+  function normalizeImageUrl(src) {
+    if (!src) return src;
+    if (src.startsWith("http")) return src;
+    if (src.startsWith("/static/")) return src;
+    if (src.startsWith("/api/")) return src;
+    if (src.startsWith("data:")) return src;
+    return `/static/uploads/${src}`;
+  }
+
   function renderMessageContent(content) {
-    const parts = content.split(/(\[.*?\]\(https?:\/\/[^\s)]+\))/g);
-    return parts.map((part, index) => {
-      const linkMatch = part.match(/^\[(.*?)\]\((https?:\/\/[^\s)]+)\)$/);
-      if (linkMatch) {
-        return (
-          <a
-            key={index}
-            href={linkMatch[2]}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="productLink"
-          >
-            {linkMatch[1]}
-          </a>
-        );
-      }
-      return <span key={index}>{part}</span>;
-    });
+    return (
+      <ReactMarkdown
+        components={{
+          a: ({ href, children }) => (
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="productLink"
+            >
+              {children}
+            </a>
+          ),
+          img: ({ src, alt }) => (
+            <img
+              src={normalizeImageUrl(src)}
+              alt={alt || ""}
+              loading="lazy"
+              onError={(e) => {
+                e.target.style.display = "none";
+              }}
+            />
+          ),
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    );
   }
 
   function renderProductCards(products) {
@@ -125,13 +145,7 @@ export default function ChatWidget({ isOpen, onClose }) {
     return (
       <div className="productCards">
         {products.map((product) => {
-          const imageUrl = product.image_url
-            ? product.image_url.startsWith("http")
-              ? product.image_url
-              : product.image_url.startsWith("/static/")
-                ? product.image_url
-                : `/static/uploads/${product.image_url}`
-            : null;
+          const imageUrl = normalizeImageUrl(product.image_url);
 
           return (
             <a

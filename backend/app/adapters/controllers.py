@@ -577,6 +577,30 @@ def create_user_router(
         except Exception:
             raise HTTPException(status_code=500, detail="Ошибка получения заметки.")
 
+    @router.post("/admin/refresh-shop-data", status_code=status.HTTP_200_OK)
+    async def admin_refresh_shop_data(
+        current_user: User = Depends(get_current_user),
+    ):
+        """Принудительное обновление данных магазина для AI-подбора. Только admin."""
+        if current_user.role != "admin":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Недостаточно прав")
+        try:
+            from app.domain.usecases.chat.generate_shop_data import generate_shop_data
+            from app.adapters.repositories import PostgresProductRepository, PostgresNoteRepository
+            from app.infrastructure.database import db_pool
+            product_repo = PostgresProductRepository(db_pool)
+            note_repo = PostgresNoteRepository(db_pool)
+            result = await generate_shop_data(product_repo=product_repo, note_repo=note_repo)
+            return {
+                "status": "ok",
+                "message": "Данные магазина обновлены",
+                "products_count": result.get("products_count", 0),
+                "news_count": result.get("news_count", 0),
+                "generated_at": result.get("generated_at"),
+            }
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
     @router.get("/notes", status_code=status.HTTP_200_OK)
     async def get_notes(last_id: int | None = None, limit: int = 30):
         """Получение списка заметок

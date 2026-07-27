@@ -2,6 +2,7 @@ import { useState } from "react";
 
 export default function AdminPage({ API_URL, token }) {
   const [title, setTitle] = useState("");
+  const [refreshStatus, setRefreshStatus] = useState({ text: "", isError: false });
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
   const [fullDescription, setFullDescription] = useState("");
@@ -166,6 +167,27 @@ export default function AdminPage({ API_URL, token }) {
     },
   };
 
+  async function handleRefreshShopData() {
+    setRefreshStatus({ text: "Обновление...", isError: false });
+    try {
+      const response = await fetch(`${API_URL}/admin/refresh-shop-data`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setRefreshStatus({ text: data.message || "Данные магазина обновлены ✅", isError: false });
+      } else {
+        setRefreshStatus({ text: data.detail || "Ошибка обновления", isError: true });
+      }
+    } catch {
+      setRefreshStatus({ text: "Ошибка сети", isError: true });
+    }
+  }
+
   return (
     <div style={styles.card}>
       <h2>Панель администратора 🛠️</h2>
@@ -290,6 +312,46 @@ export default function AdminPage({ API_URL, token }) {
           🚀 Создать и загрузить
         </button>
       </form>
+
+      <hr style={{ margin: "30px 0", border: "none", borderTop: "1px solid #e2e8f0" }} />
+
+      <h3>Обновление данных магазина</h3>
+      <p style={{ color: "#697386", fontSize: "14px", marginBottom: "15px" }}>
+        Пересобрать данные для AI-подбора обуви на основе текущих товаров и публикаций
+      </p>
+
+      {refreshStatus.text && (
+        <div
+          style={{
+            padding: "12px",
+            borderRadius: "8px",
+            marginBottom: "15px",
+            backgroundColor: refreshStatus.isError ? "#fef3f2" : "#edfcf2",
+            color: refreshStatus.isError ? "#b42318" : "#0ea341",
+            fontWeight: "500",
+          }}
+        >
+          {refreshStatus.text}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={handleRefreshShopData}
+        style={{
+          width: "100%",
+          padding: "12px",
+          fontSize: "16px",
+          fontWeight: "600",
+          color: "#fff",
+          backgroundColor: "#4f46e5",
+          border: "none",
+          borderRadius: "8px",
+          cursor: "pointer",
+        }}
+      >
+        🔄 Обновить данные магазина
+      </button>
     </div>
   );
 }
