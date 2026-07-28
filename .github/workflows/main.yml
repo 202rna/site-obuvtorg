@@ -25,13 +25,15 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/my-backend:latest
 
-      # 2. Собираем и отправляем FRONTEND
+      # 2. Собираем и отправляем FRONTEND (СЮДА ДОБАВЛЕН БЛОК BUILD-ARGS)
       - name: Build and push Frontend
         uses: docker/build-push-action@v5
         with:
           context: ./frontend # GitHub зайдет в папку frontend
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/my-frontend:latest
+          build-args: |
+            VITE_SMARTCAPTCHA_SITE_KEY=${{ secrets.VITE_SMARTCAPTCHA_SITE_KEY }}
 
   deploy:
     runs-on: ubuntu-latest
