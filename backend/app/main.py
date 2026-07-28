@@ -1,6 +1,8 @@
 import os
+import time
+from collections import defaultdict
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, APIRouter, HTTPException, status
+from fastapi import FastAPI, APIRouter, HTTPException, status, Request
 from pydantic import BaseModel
 import httpx
 from fastapi.middleware.cors import CORSMiddleware
@@ -205,6 +207,34 @@ app.include_router(shop_data_router)
 
 
 # ===== Captcha‑gate / Yandex SmartCaptcha =====
+# Простой in-memory rate-limiter для выявления подозрительного трафика
+request_log: dict = defaultdict(list)  # IP -> [timestamp, ...]
+RATE_LIMIT_WINDOW = 10  # секунд
+RATE_LIMIT_MAX_REQUESTS = 20  # макс запросов в окне
+
+
+def is_suspicious_ip(client_ip: str) -> float:
+    """Возвращает 0.0 (не подозрительно) .. 1.0 (бот).
+    Анализирует частоту запросов с IP.
+    """
+    now = time.time()
+    timestamps = request_log[client_ip]
+    # Очищаем старые записи
+    request_log[client_ip] = [t for t in timestamps if now - t < RATE_LIMIT_WINDOW]
+    count = len(request_log[client_ip])
+    # Добавляем текущий запрос
+    request_log[client_ip].append(now)
+    
+    if count == 0:
+        return 0.0
+    if count < 5:
+        return 0.0
+    if count < 10:
+        return 0.3
+    if count < RATE_LIMIT_MAX_REQUESTS:
+        return 0.6
+    return 1.0
+
 
 CAPTCHA_SECRET_KEY = os.getenv("SMARTCAPTCHA_SERVER_KEY", "")
 
@@ -212,8 +242,54 @@ CAPTCHA_SECRET_KEY = os.getenv("SMARTCAPTCHA_SERVER_KEY", "")
 class CaptchaVerifyRequest(BaseModel):
     token: str
 
+class BehaviorScoreRequest(BaseModel):
+    """Данные от фронтенда для оценки поведения."""
+    mouse_moves: int = 0
+    scroll_events: int = 0
+    clicks: int = 0
+    key_presses: int = 0
+    time_on_page: float = 0.0  # секунд
+
 
 captcha_router = APIRouter(prefix="/api", tags=["captcha"])
+
+
+@captcha_router.post("/check-behavior", status_code=status.HTTP_200_OK)
+async def check_behavior(body: BehaviorScoreRequest, request: Request):
+    """Серверная оценка подозрительности на основе:
+    - поведенческих данных с фронтенда
+    - частоты запросов с IP
+    Возвращает { "suspicious": true/false, "score": 0.0..1.0 }
+    """
+    client_ip = request.client.host if request.client else "unknown"
+    ip_score = is_suspicious_ip(client_ip)
+    
+    # Поведенческая оценка
+    has_moves = body.mouse_moves > 5
+    has_actions = body.scroll_events > 0 or body.clicks > 1 or body.key_presses > 2
+    fast_load = body.time_on_page < 1.5 and body.time_on_page > 0
+    
+    if fast_load and not has_moves:
+        behavior_score = 0.8  # быстрая загрузка без движений мыши
+    elif has_moves and (has_actions or body.time_on_page > 3):
+        behavior_score = 0.0  # явно человек
+    elif has_moves:
+        behavior_score = 0.2
+    elif body.time_on_page > 15 and not has_moves:
+        behavior_score = 0.5  # долго但没有 действий
+    else:
+        behavior_score = 0.3
+    
+    # Итоговая оценка — максимум из IP-скора и поведенческого скора
+    final_score = max(ip_score, behavior_score)
+    suspicious = final_score >= 0.5
+    
+    logger.info(f"Behavior check IP={client_ip} ip_score={ip_score:.2f} behavior={behavior_score:.2f} final={final_score:.2f} suspicious={suspicious}")
+    
+    return {
+        "suspicious": suspicious,
+        "score": final_score,
+    }
 
 
 @captcha_router.post("/verify-gate-captcha", status_code=status.HTTP_200_OK)
