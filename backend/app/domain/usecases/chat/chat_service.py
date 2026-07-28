@@ -64,7 +64,7 @@ RECOMMEND_PATTERN = re.compile(r'\[RECOMMEND:(\d+)\]')
 async def get_ai_answer(
     messages: list[dict],
     api_key: str,
-    model: str = "gpt-4o-mini",
+    model: str = "mistral-nemo",
     base_url: str = "https://api.aitunnel.ru/v1",
 ) -> dict:
     """Получает ответ от AI (AI Tunnel) на основе данных магазина.
