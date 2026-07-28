@@ -439,39 +439,282 @@ export default function ProductsPage({
               );
             })}
           </div>
-          {otherCategories.length > 0 && (
-            <div className="sub-tabs">
-              {otherCategories.map((cat) => {
-                const isSelected = selectedCategories.includes(cat);
-                return (
-                  <button
-                    key={cat}
-                    onClick={() => handleCategoryToggle(cat)}
+
+          {/* Мобильные выпадающие категории: Страна, Материал, Сезон, Вид */}
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              width: "100%",
+              padding: "4px 0 6px 0",
+              gap: "4px",
+              justifyContent: "center",
+            }}
+          >
+            {countryCategories.length > 0 && (
+              <div style={{ position: "relative" }}>
+                <button
+                  onClick={() => setCountryOpen(!countryOpen)}
+                  style={{
+                    padding: "5px 10px",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "16px",
+                    background: countryOpen ? "#eef2ff" : "#fff",
+                    color: countryOpen ? "#4f46e5" : "#475569",
+                    fontWeight: countryOpen ? 600 : 400,
+                    fontSize: "11px",
+                    cursor: "pointer",
+                    fontFamily: '"Inter", "SF Pro Text", system-ui, sans-serif',
+                    whiteSpace: "nowrap",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  {countryOpen ? "▴ " : "▾ "}
+                  Страна
+                </button>
+                {countryOpen && (
+                  <div
                     style={{
-                      flex: 1,
-                      padding: "5px 4px",
-                      border: "none",
-                      background: "transparent",
-                      color: isSelected ? "#64748b" : "#cbd5e1",
-                      fontWeight: isSelected ? 500 : 400,
-                      fontSize: "10px",
-                      cursor: "pointer",
-                      fontFamily:
-                        '"Inter", "SF Pro Text", system-ui, sans-serif',
-                      letterSpacing: "0.02em",
-                      textTransform: "uppercase",
-                      transition: "all 0.2s",
-                      borderBottom: isSelected
-                        ? "1.5px solid #94a3b8"
-                        : "1.5px solid transparent",
+                      position: "absolute",
+                      top: "100%",
+                      left: "0",
+                      background: "#fff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                      zIndex: 20,
+                      minWidth: "140px",
+                      padding: "4px 0",
                     }}
                   >
-                    {cat}
-                  </button>
-                );
-              })}
-            </div>
-          )}
+                    {countryCategories.map((cat) => {
+                      const isSelected = selectedCategories.includes(cat);
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => handleCategoryToggle(cat)}
+                          style={{
+                            display: "block",
+                            width: "100%",
+                            padding: "6px 14px",
+                            border: "none",
+                            background: isSelected ? "#eef2ff" : "transparent",
+                            color: isSelected ? "#4f46e5" : "#475569",
+                            fontWeight: isSelected ? 600 : 400,
+                            fontSize: "12px",
+                            cursor: "pointer",
+                            textAlign: "left",
+                            fontFamily:
+                              '"Inter", "SF Pro Text", system-ui, sans-serif',
+                          }}
+                        >
+                          {displayCategory(cat)} {isSelected && "✓"}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {materialCategories.length > 0 && (
+              <div style={{ position: "relative" }}>
+                <button
+                  onClick={() => setMaterialOpen(!materialOpen)}
+                  style={{
+                    padding: "5px 10px",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "16px",
+                    background: materialOpen ? "#eef2ff" : "#fff",
+                    color: materialOpen ? "#4f46e5" : "#475569",
+                    fontWeight: materialOpen ? 600 : 400,
+                    fontSize: "11px",
+                    cursor: "pointer",
+                    fontFamily: '"Inter", "SF Pro Text", system-ui, sans-serif',
+                    whiteSpace: "nowrap",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  {materialOpen ? "▴ " : "▾ "}
+                  Материал
+                </button>
+                {materialOpen && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "100%",
+                      left: "0",
+                      background: "#fff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                      zIndex: 20,
+                      minWidth: "140px",
+                      padding: "4px 0",
+                    }}
+                  >
+                    {materialCategories.map((cat) => {
+                      const isSelected = selectedCategories.includes(cat);
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => handleCategoryToggle(cat)}
+                          style={{
+                            display: "block",
+                            width: "100%",
+                            padding: "6px 14px",
+                            border: "none",
+                            background: isSelected ? "#eef2ff" : "transparent",
+                            color: isSelected ? "#4f46e5" : "#475569",
+                            fontWeight: isSelected ? 600 : 400,
+                            fontSize: "12px",
+                            cursor: "pointer",
+                            textAlign: "left",
+                            fontFamily:
+                              '"Inter", "SF Pro Text", system-ui, sans-serif',
+                          }}
+                        >
+                          {displayCategory(cat)} {isSelected && "✓"}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {seasonCategories.length > 0 && (
+              <div style={{ position: "relative" }}>
+                <button
+                  onClick={() => setSeasonOpen(!seasonOpen)}
+                  style={{
+                    padding: "5px 10px",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "16px",
+                    background: seasonOpen ? "#eef2ff" : "#fff",
+                    color: seasonOpen ? "#4f46e5" : "#475569",
+                    fontWeight: seasonOpen ? 600 : 400,
+                    fontSize: "11px",
+                    cursor: "pointer",
+                    fontFamily: '"Inter", "SF Pro Text", system-ui, sans-serif',
+                    whiteSpace: "nowrap",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  {seasonOpen ? "▴ " : "▾ "}
+                  Сезон
+                </button>
+                {seasonOpen && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "100%",
+                      left: "0",
+                      background: "#fff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                      zIndex: 20,
+                      minWidth: "140px",
+                      padding: "4px 0",
+                    }}
+                  >
+                    {seasonCategories.map((cat) => {
+                      const isSelected = selectedCategories.includes(cat);
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => handleCategoryToggle(cat)}
+                          style={{
+                            display: "block",
+                            width: "100%",
+                            padding: "6px 14px",
+                            border: "none",
+                            background: isSelected ? "#eef2ff" : "transparent",
+                            color: isSelected ? "#4f46e5" : "#475569",
+                            fontWeight: isSelected ? 600 : 400,
+                            fontSize: "12px",
+                            cursor: "pointer",
+                            textAlign: "left",
+                            fontFamily:
+                              '"Inter", "SF Pro Text", system-ui, sans-serif',
+                          }}
+                        >
+                          {displayCategory(cat)} {isSelected && "✓"}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {typeCategories.length > 0 && (
+              <div style={{ position: "relative" }}>
+                <button
+                  onClick={() => setTypeOpen(!typeOpen)}
+                  style={{
+                    padding: "5px 10px",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "16px",
+                    background: typeOpen ? "#eef2ff" : "#fff",
+                    color: typeOpen ? "#4f46e5" : "#475569",
+                    fontWeight: typeOpen ? 600 : 400,
+                    fontSize: "11px",
+                    cursor: "pointer",
+                    fontFamily: '"Inter", "SF Pro Text", system-ui, sans-serif',
+                    whiteSpace: "nowrap",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  {typeOpen ? "▴ " : "▾ "}
+                  Вид
+                </button>
+                {typeOpen && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "100%",
+                      left: "0",
+                      background: "#fff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                      zIndex: 20,
+                      minWidth: "140px",
+                      padding: "4px 0",
+                    }}
+                  >
+                    {typeCategories.map((cat) => {
+                      const isSelected = selectedCategories.includes(cat);
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => handleCategoryToggle(cat)}
+                          style={{
+                            display: "block",
+                            width: "100%",
+                            padding: "6px 14px",
+                            border: "none",
+                            background: isSelected ? "#eef2ff" : "transparent",
+                            color: isSelected ? "#4f46e5" : "#475569",
+                            fontWeight: isSelected ? 600 : 400,
+                            fontSize: "12px",
+                            cursor: "pointer",
+                            textAlign: "left",
+                            fontFamily:
+                              '"Inter", "SF Pro Text", system-ui, sans-serif',
+                          }}
+                        >
+                          {displayCategory(cat)} {isSelected && "✓"}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ========== ДЕСКТОП-САЙДБАР ========== */}
