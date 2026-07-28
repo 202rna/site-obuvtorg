@@ -72,7 +72,7 @@ export default function Navigation({
               </a>
 
               <span>
-                Ярославская область, г. Ярославль, <br />
+                г. Ярославль, <br />
                 ул. Вспольинское Поле, д. 18
               </span>
 
@@ -265,7 +265,7 @@ export default function Navigation({
           >
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
           </svg>
-          AI Подбор обуви под описание
+          AI Подбор обуви по описанию
         </button>
       </div>
     </>
