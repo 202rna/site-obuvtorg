@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
+import CaptchaGate from "./components/CaptchaGate.jsx";
 import Navigation from "./components/Navigation.jsx";
 import ProductsPage from "./pages/ProductsPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
@@ -22,6 +23,9 @@ export default function App() {
   const [cart, setCart] = useState([]);
   const [chatOpen, setChatOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [isHuman, setIsHuman] = useState(() => {
+    return sessionStorage.getItem("captcha_passed") === "true";
+  });
 
   const {
     localCart,
@@ -140,214 +144,216 @@ export default function App() {
   const showChatAsOverlay = chatOpen && isMobile;
 
   return (
-    <div
-      className="appRoot"
-      style={{
-        background:
-          "linear-gradient(135deg, #d3eaf5 0%, #faf4f4 50%, #f2f2e1 100%)",
-        minHeight: "100vh",
-        boxSizing: "border-box",
-        height: "100vh",
-        maxHeight: "100vh",
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <Navigation
-        token={token}
-        userRole={profile?.role || "user"}
-        cartCount={cart.length}
-        localCartCount={localCartCount}
-        handleLogout={handleLogout}
-        onChatToggle={handleChatToggle}
-        onChatClose={handleChatClose}
-      />
-
-      {/* Контейнер, который при chatOpen делит экран на десктопе */}
+    <CaptchaGate onPass={() => setIsHuman(true)}>
       <div
-        className="chatLayout"
+        className="appRoot"
         style={{
-          display: "flex",
-          flex: 1,
-          minHeight: 0,
+          background:
+            "linear-gradient(135deg, #d3eaf5 0%, #faf4f4 50%, #f2f2e1 100%)",
+          minHeight: "100vh",
+          boxSizing: "border-box",
+          height: "100vh",
+          maxHeight: "100vh",
           overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
-        {/* Основной контент */}
+        <Navigation
+          token={token}
+          userRole={profile?.role || "user"}
+          cartCount={cart.length}
+          localCartCount={localCartCount}
+          handleLogout={handleLogout}
+          onChatToggle={handleChatToggle}
+          onChatClose={handleChatClose}
+        />
+
+        {/* Контейнер, который при chatOpen делит экран на десктопе */}
         <div
-          className="mainContent"
+          className="chatLayout"
           style={{
-            flex: chatOpen && !isMobile ? "0 0 66.666%" : "1 1 auto",
-            overflow: "auto",
-            minWidth: 0,
+            display: "flex",
+            flex: 1,
+            minHeight: 0,
+            overflow: "hidden",
           }}
         >
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <ProductsPage
-                  API_URL={API_URL}
-                  addToCart={addToCart}
-                  token={token}
-                  userRole={profile?.role || "user"}
-                  cart={cart}
-                  localCart={localCart}
-                  isInLocalCart={isInLocalCart}
-                />
-              }
-            />
-            <Route
-              path="/discount"
-              element={
-                <ProductsPage
-                  API_URL={API_URL}
-                  addToCart={addToCart}
-                  token={token}
-                  userRole={profile?.role || "user"}
-                  cart={cart}
-                  localCart={localCart}
-                  isInLocalCart={isInLocalCart}
-                  discountedOnly
-                />
-              }
-            />
-
-            <Route
-              path="/notes"
-              element={<UserNotesPage API_URL={API_URL} />}
-            />
-            <Route path="/how-to-drive" element={<HowToDrivePage />} />
-            <Route
-              path="/note/:id"
-              element={<NoteDetailPage API_URL={API_URL} />}
-            />
-            <Route
-              path="/products/:productId"
-              element={
-                <ProductPage
-                  API_URL={API_URL}
-                  addToCart={addToCart}
-                  token={token}
-                  cart={cart}
-                  userRole={profile?.role || "user"}
-                />
-              }
-            />
-            <Route
-              path="/login"
-              element={
-                !token ? (
-                  <LoginPage API_URL={API_URL} setToken={setToken} />
-                ) : (
-                  <Navigate to="/" />
-                )
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                token ? (
-                  <ProfilePage profile={profile} />
-                ) : (
-                  <Navigate to="/login" />
-                )
-              }
-            />
-            <Route
-              path="/cart"
-              element={
-                token ? (
-                  <CartPage cart={cart} clearCart={clearCart} />
-                ) : (
-                  <CartPage
-                    cart={localCart}
-                    clearCart={clearLocalCart}
-                    isLocal
+          {/* Основной контент */}
+          <div
+            className="mainContent"
+            style={{
+              flex: chatOpen && !isMobile ? "0 0 66.666%" : "1 1 auto",
+              overflow: "auto",
+              minWidth: 0,
+            }}
+          >
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  <ProductsPage
+                    API_URL={API_URL}
+                    addToCart={addToCart}
+                    token={token}
+                    userRole={profile?.role || "user"}
+                    cart={cart}
+                    localCart={localCart}
+                    isInLocalCart={isInLocalCart}
                   />
-                )
-              }
-            />
+                }
+              />
+              <Route
+                path="/discount"
+                element={
+                  <ProductsPage
+                    API_URL={API_URL}
+                    addToCart={addToCart}
+                    token={token}
+                    userRole={profile?.role || "user"}
+                    cart={cart}
+                    localCart={localCart}
+                    isInLocalCart={isInLocalCart}
+                    discountedOnly
+                  />
+                }
+              />
 
-            <Route
-              path="/admin"
-              element={
-                token && profile?.role === "admin" ? (
-                  <AdminPage API_URL={API_URL} token={token} />
-                ) : (
-                  <Navigate to="/" />
-                )
-              }
-            />
+              <Route
+                path="/notes"
+                element={<UserNotesPage API_URL={API_URL} />}
+              />
+              <Route path="/how-to-drive" element={<HowToDrivePage />} />
+              <Route
+                path="/note/:id"
+                element={<NoteDetailPage API_URL={API_URL} />}
+              />
+              <Route
+                path="/products/:productId"
+                element={
+                  <ProductPage
+                    API_URL={API_URL}
+                    addToCart={addToCart}
+                    token={token}
+                    cart={cart}
+                    userRole={profile?.role || "user"}
+                  />
+                }
+              />
+              <Route
+                path="/login"
+                element={
+                  !token ? (
+                    <LoginPage API_URL={API_URL} setToken={setToken} />
+                  ) : (
+                    <Navigate to="/" />
+                  )
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  token ? (
+                    <ProfilePage profile={profile} />
+                  ) : (
+                    <Navigate to="/login" />
+                  )
+                }
+              />
+              <Route
+                path="/cart"
+                element={
+                  token ? (
+                    <CartPage cart={cart} clearCart={clearCart} />
+                  ) : (
+                    <CartPage
+                      cart={localCart}
+                      clearCart={clearLocalCart}
+                      isLocal
+                    />
+                  )
+                }
+              />
 
-            <Route
-              path="/admin/notes"
-              element={
-                token && profile?.role === "admin" ? (
-                  <AdminNotesPage API_URL={API_URL} token={token} />
-                ) : (
-                  <Navigate to="/" />
-                )
-              }
-            />
-          </Routes>
+              <Route
+                path="/admin"
+                element={
+                  token && profile?.role === "admin" ? (
+                    <AdminPage API_URL={API_URL} token={token} />
+                  ) : (
+                    <Navigate to="/" />
+                  )
+                }
+              />
+
+              <Route
+                path="/admin/notes"
+                element={
+                  token && profile?.role === "admin" ? (
+                    <AdminNotesPage API_URL={API_URL} token={token} />
+                  ) : (
+                    <Navigate to="/" />
+                  )
+                }
+              />
+            </Routes>
+          </div>
+
+          {/* Чат-панель на десктопе (боковая панель) */}
+          {chatOpen && !isMobile && (
+            <div
+              className="chatWrapper"
+              style={{
+                flex: "0 0 33.333%",
+                minWidth: 0,
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+                borderLeft: "1px solid #e2e8f0",
+                boxShadow: "-2px 0 8px rgba(0, 0, 0, 0.06)",
+              }}
+            >
+              <ChatWidget isOpen={true} onClose={handleChatClose} />
+            </div>
+          )}
         </div>
 
-        {/* Чат-панель на десктопе (боковая панель) */}
-        {chatOpen && !isMobile && (
+        {/* Чат overlay на мобильных — поверх всего, не меняет раскладку */}
+        {showChatAsOverlay && (
           <div
-            className="chatWrapper"
+            className="chatMobileOverlay"
             style={{
-              flex: "0 0 33.333%",
-              minWidth: 0,
-              overflow: "hidden",
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 9999,
               display: "flex",
               flexDirection: "column",
-              borderLeft: "1px solid #e2e8f0",
-              boxShadow: "-2px 0 8px rgba(0, 0, 0, 0.06)",
+              background: "#f7f8fc",
             }}
           >
             <ChatWidget isOpen={true} onClose={handleChatClose} />
           </div>
         )}
-      </div>
 
-      {/* Чат overlay на мобильных — поверх всего, не меняет раскладку */}
-      {showChatAsOverlay && (
-        <div
-          className="chatMobileOverlay"
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 9999,
-            display: "flex",
-            flexDirection: "column",
-            background: "#f7f8fc",
-          }}
-        >
-          <ChatWidget isOpen={true} onClose={handleChatClose} />
-        </div>
-      )}
-
-      <style>{`
-        body {
-          overflow: hidden;
-          height: 100%;
-          margin: 0;
-        }
-
-        /* На мобильных body не трогаем, т.к. чат — overlay */
-        @media (max-width: 768px) {
+        <style>{`
           body {
-            overflow: visible;
-            height: auto;
+            overflow: hidden;
+            height: 100%;
+            margin: 0;
           }
-        }
-      `}</style>
-    </div>
+
+          /* На мобильных body не трогаем, т.к. чат — overlay */
+          @media (max-width: 768px) {
+            body {
+              overflow: visible;
+              height: auto;
+            }
+          }
+        `}</style>
+      </div>
+    </CaptchaGate>
   );
 }

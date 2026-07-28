@@ -1,5 +1,8 @@
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, APIRouter, HTTPException, status
+from pydantic import BaseModel
+import httpx
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -199,3 +202,47 @@ async def get_shop_data():
 
 
 app.include_router(shop_data_router)
+
+
+# ===== Captcha‑gate / Yandex SmartCaptcha =====
+
+CAPTCHA_SECRET_KEY = os.getenv("SMARTCAPTCHA_SERVER_KEY", "")
+
+
+class CaptchaVerifyRequest(BaseModel):
+    token: str
+
+
+captcha_router = APIRouter(prefix="/api", tags=["captcha"])
+
+
+@captcha_router.post("/verify-gate-captcha", status_code=status.HTTP_200_OK)
+async def verify_gate_captcha(body: CaptchaVerifyRequest):
+    """Проверяет токен Яндекс SmartCaptcha через серверный API.
+    
+    Тело запроса: { "token": "токен_от_фронтенда" }
+    Ответ:        { "success": true/false }
+    """
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.post(
+                "https://smartcaptcha.yandexcloud.net/validate",
+                data={
+                    "secret": CAPTCHA_SECRET_KEY,
+                    "token": body.token,
+                },
+            )
+            result = resp.json()
+            # API Яндекса возвращает { "status": "ok", "host": "...", ... }
+            # или { "status": "failed", ... }
+            success = result.get("status") == "ok"
+            return {"success": success}
+    except Exception as e:
+        logger.error(f"Captcha verification error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Ошибка проверки капчи на стороне сервера",
+        )
+
+
+app.include_router(captcha_router)

@@ -47,9 +47,17 @@ export default function ChatWidget({ isOpen, onClose }) {
     setIsLoading(true);
 
     try {
+      // Пример: прикрепляем captcha-токен к защищённым запросам
+      const captchaToken = sessionStorage.getItem("captcha_token") || "";
+
       const response = await fetch(`${API_URL}/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          // Для запросов к защищённым эндпоинтам AI-бота
+          // бэкенд может проверить captcha-токен из заголовка X-Captcha-Token
+          ...(captchaToken ? { "X-Captcha-Token": captchaToken } : {}),
+        },
         body: JSON.stringify({
           messages: updatedMessages.map(({ role, content }) => ({
             role,

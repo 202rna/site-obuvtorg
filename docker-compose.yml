@@ -103,6 +103,7 @@ services:
       - AI_TUNNEL_API_KEY=${AI_TUNNEL_API_KEY}
       - AI_TUNNEL_BASE_URL=${AI_TUNNEL_BASE_URL}
       - AI_TUNNEL_MODEL=${AI_TUNNEL_MODEL}
+      - SMARTCAPTCHA_SERVER_KEY=${SMARTCAPTCHA_SERVER_KEY}
     depends_on:
       - postgres_db
     ports:
@@ -113,7 +114,10 @@ services:
       - app_network
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        - VITE_SMARTCAPTCHA_SITE_KEY=${VITE_SMARTCAPTCHA_SITE_KEY}
     image: 2136rna/my-frontend:latest
     container_name: clean_app_frontend
     restart: always
