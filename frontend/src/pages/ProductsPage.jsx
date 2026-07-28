@@ -44,6 +44,51 @@ const TYPE_KEYWORDS = [
 // Ключевые слова пола (поиск по подстроке)
 const GENDER_KEYWORDS = ["жен", "муж", "дет"];
 
+// Ключевые слова стран
+const COUNTRY_KEYWORDS = [
+  "росси", "рф",
+  "итал",
+  "кита",
+  "герман",
+  "турци",
+  "португал",
+  "испан",
+  "франци",
+  "польш",
+  "чех",
+  "инди",
+  "вьетнам",
+  "бразили",
+  "аргентин",
+  "украин",
+  "белорус",
+  "казах",
+];
+
+// Ключевые слова материалов
+const MATERIAL_KEYWORDS = [
+  "кож",
+  "текстил",
+  "замш",
+  "нубук",
+  "велюр",
+  "лак",
+  "резин",
+  "полиуретан",
+  "термополиуретан", "тпу",
+  "этиленвинилацетат", "эва",
+  "пвх",
+  "нейлон",
+  "полиэстер",
+  "хлоп",
+  "шерст",
+  "войлок",
+  "фетр",
+  "мех",
+  "искусствен",
+  "натуральн",
+];
+
 function normalize(cat) {
   if (!cat) return "";
   return cat.toLowerCase().trim();
@@ -56,6 +101,12 @@ function classifyCategory(cat) {
   }
   for (const kw of GENDER_KEYWORDS) {
     if (n.includes(kw)) return "gender";
+  }
+  for (const kw of COUNTRY_KEYWORDS) {
+    if (n.includes(kw)) return "country";
+  }
+  for (const kw of MATERIAL_KEYWORDS) {
+    if (n.includes(kw)) return "material";
   }
   for (const kw of TYPE_KEYWORDS) {
     if (n.includes(kw)) return "type";
@@ -87,6 +138,8 @@ export default function ProductsPage({
 
   const [seasonOpen, setSeasonOpen] = useState(false);
   const [typeOpen, setTypeOpen] = useState(false);
+  const [countryOpen, setCountryOpen] = useState(false);
+  const [materialOpen, setMaterialOpen] = useState(false);
 
   useEffect(() => {
     async function loadAllProducts() {
@@ -135,22 +188,28 @@ export default function ProductsPage({
   }, [products, discountedOnly]);
 
   // Разделяем категории по группам
-  const { seasonCategories, typeCategories, otherCategories } = useMemo(() => {
+  const { seasonCategories, typeCategories, countryCategories, materialCategories, otherCategories } = useMemo(() => {
     const allCats = discountFiltered.flatMap((p) => p.categories || []);
     const unique = [...new Set(allCats)];
     const season = [];
     const type = [];
+    const country = [];
+    const material = [];
     const other = [];
     for (const cat of unique) {
       const group = classifyCategory(cat);
       if (group === "gender") continue; // половые — отдельные кнопки
       if (group === "season") season.push(cat);
       else if (group === "type") type.push(cat);
+      else if (group === "country") country.push(cat);
+      else if (group === "material") material.push(cat);
       else other.push(cat);
     }
     return {
       seasonCategories: season.sort((a, b) => a.localeCompare(b)),
       typeCategories: type.sort((a, b) => a.localeCompare(b)),
+      countryCategories: country.sort((a, b) => a.localeCompare(b)),
+      materialCategories: material.sort((a, b) => a.localeCompare(b)),
       otherCategories: other.sort((a, b) => a.localeCompare(b)),
     };
   }, [discountFiltered]);
@@ -463,10 +522,74 @@ export default function ProductsPage({
           {/* Разделитель */}
           {(seasonCategories.length > 0 ||
             typeCategories.length > 0 ||
+            countryCategories.length > 0 ||
+            materialCategories.length > 0 ||
             otherCategories.length > 0) && (
             <div
               style={{ margin: "12px 0 8px", borderTop: "1px solid #e2e8f0" }}
             />
+          )}
+
+          {/* ===== СТРАНА (выпадающее меню) ===== */}
+          {countryCategories.length > 0 && (
+            <div style={{ marginBottom: "4px" }}>
+              <button
+                onClick={() => setCountryOpen(!countryOpen)}
+                style={sidebarGroupStyle(countryOpen)}
+              >
+                <span style={{ marginRight: "6px" }}>
+                  {countryOpen ? "▾" : "▸"}
+                </span>
+                Страна
+              </button>
+              {countryOpen && (
+                <div style={{ marginTop: "2px", marginBottom: "4px" }}>
+                  {countryCategories.map((cat) => {
+                    const isSelected = selectedCategories.includes(cat);
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => handleCategoryToggle(cat)}
+                        style={sidebarSubcatStyle(isSelected)}
+                      >
+                        {displayCategory(cat)} {isSelected && "✓"}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ===== МАТЕРИАЛ (выпадающее меню) ===== */}
+          {materialCategories.length > 0 && (
+            <div style={{ marginBottom: "4px" }}>
+              <button
+                onClick={() => setMaterialOpen(!materialOpen)}
+                style={sidebarGroupStyle(materialOpen)}
+              >
+                <span style={{ marginRight: "6px" }}>
+                  {materialOpen ? "▾" : "▸"}
+                </span>
+                Материал
+              </button>
+              {materialOpen && (
+                <div style={{ marginTop: "2px", marginBottom: "4px" }}>
+                  {materialCategories.map((cat) => {
+                    const isSelected = selectedCategories.includes(cat);
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => handleCategoryToggle(cat)}
+                        style={sidebarSubcatStyle(isSelected)}
+                      >
+                        {displayCategory(cat)} {isSelected && "✓"}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           )}
 
           {/* ===== СЕЗОН (выпадающее меню) ===== */}
@@ -534,7 +657,10 @@ export default function ProductsPage({
           {/* ===== ОСТАЛЬНЫЕ КАТЕГОРИИ (как раньше) ===== */}
           {otherCategories.length > 0 && (
             <>
-              {seasonCategories.length > 0 || typeCategories.length > 0 ? (
+              {seasonCategories.length > 0 ||
+              typeCategories.length > 0 ||
+              countryCategories.length > 0 ||
+              materialCategories.length > 0 ? (
                 <div
                   style={{
                     margin: "8px 0 8px",
@@ -565,6 +691,8 @@ export default function ProductsPage({
                 handleClearCategories();
                 setSeasonOpen(false);
                 setTypeOpen(false);
+                setCountryOpen(false);
+                setMaterialOpen(false);
               }}
               style={{
                 display: "block",
