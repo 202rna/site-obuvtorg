@@ -3,9 +3,9 @@ import { useSearchParams } from "react-router-dom";
 import ProductCard from "../components/ProductCard.jsx";
 
 const MOBILE_TABS = [
-  { id: "женские", label: "Женщинам" },
-  { id: "мужские", label: "Мужчинам" },
-  { id: "для детей", label: "Для детей" },
+  { id: "жен", label: "Женщинам" },
+  { id: "муж", label: "Мужчинам" },
+  { id: "дет", label: "Для детей" },
 ];
 
 // Ключевые слова сезона
@@ -218,7 +218,7 @@ export default function ProductsPage({
     let result = discountFiltered;
     if (mobileTab) {
       result = result.filter(
-        (p) => p.categories && p.categories.some((c) => normalize(c) === mobileTab),
+        (p) => p.categories && p.categories.some((c) => normalize(c).includes(mobileTab)),
       );
     }
     if (selectedCategories.length > 0) {
