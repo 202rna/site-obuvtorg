@@ -21,6 +21,7 @@ export default function App() {
   const [profile, setProfile] = useState(null);
   const [cart, setCart] = useState([]);
   const [chatOpen, setChatOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   const {
     localCart,
@@ -30,6 +31,15 @@ export default function App() {
     syncToServer,
     localCartCount,
   } = useLocalCart();
+
+  // Отслеживаем ширину экрана для определения мобильности
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   function handleLogout() {
     localStorage.removeItem("token");
@@ -126,8 +136,12 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, API_URL]);
 
+  // На мобильных — чат как overlay поверх всего, без изменения раскладки страницы
+  const showChatAsOverlay = chatOpen && isMobile;
+
   return (
     <div
+      className="appRoot"
       style={{
         background:
           "linear-gradient(135deg, #d3eaf5 0%, #faf4f4 50%, #f2f2e1 100%)",
@@ -150,9 +164,9 @@ export default function App() {
         onChatClose={handleChatClose}
       />
 
-      {/* Контейнер, который при chatOpen делит экран: основной контент слева, чат справа */}
+      {/* Контейнер, который при chatOpen делит экран на десктопе */}
       <div
-        className={chatOpen ? "chatLayout chatOpen" : "chatLayout"}
+        className="chatLayout"
         style={{
           display: "flex",
           flex: 1,
@@ -160,118 +174,128 @@ export default function App() {
           overflow: "hidden",
         }}
       >
-        {/* Основной контент (левый блок) */}
+        {/* Основной контент */}
         <div
           className="mainContent"
           style={{
-            flex: chatOpen ? "0 0 66.666%" : "1 1 auto",
+            flex: chatOpen && !isMobile ? "0 0 66.666%" : "1 1 auto",
             overflow: "auto",
             minWidth: 0,
           }}
         >
           <Routes>
-          <Route
-            path="/"
-            element={
-              <ProductsPage
-                API_URL={API_URL}
-                addToCart={addToCart}
-                token={token}
-                userRole={profile?.role || "user"}
-                cart={cart}
-                localCart={localCart}
-                isInLocalCart={isInLocalCart}
-              />
-            }
-          />
-          <Route
-            path="/discount"
-            element={
-              <ProductsPage
-                API_URL={API_URL}
-                addToCart={addToCart}
-                token={token}
-                userRole={profile?.role || "user"}
-                cart={cart}
-                localCart={localCart}
-                isInLocalCart={isInLocalCart}
-                discountedOnly
-              />
-            }
-          />
+            <Route
+              path="/"
+              element={
+                <ProductsPage
+                  API_URL={API_URL}
+                  addToCart={addToCart}
+                  token={token}
+                  userRole={profile?.role || "user"}
+                  cart={cart}
+                  localCart={localCart}
+                  isInLocalCart={isInLocalCart}
+                />
+              }
+            />
+            <Route
+              path="/discount"
+              element={
+                <ProductsPage
+                  API_URL={API_URL}
+                  addToCart={addToCart}
+                  token={token}
+                  userRole={profile?.role || "user"}
+                  cart={cart}
+                  localCart={localCart}
+                  isInLocalCart={isInLocalCart}
+                  discountedOnly
+                />
+              }
+            />
 
-          <Route path="/notes" element={<UserNotesPage API_URL={API_URL} />} />
-          <Route path="/how-to-drive" element={<HowToDrivePage />} />
-          <Route
-            path="/note/:id"
-            element={<NoteDetailPage API_URL={API_URL} />}
-          />
-          <Route
-            path="/products/:productId"
-            element={
-              <ProductPage
-                API_URL={API_URL}
-                addToCart={addToCart}
-                token={token}
-                cart={cart}
-                userRole={profile?.role || "user"}
-              />
-            }
-          />
-          <Route
-            path="/login"
-            element={
-              !token ? (
-                <LoginPage API_URL={API_URL} setToken={setToken} />
-              ) : (
-                <Navigate to="/" />
-              )
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              token ? <ProfilePage profile={profile} /> : <Navigate to="/login" />
-            }
-          />
-          <Route
-            path="/cart"
-            element={
-              token ? (
-                <CartPage cart={cart} clearCart={clearCart} />
-              ) : (
-                <CartPage cart={localCart} clearCart={clearLocalCart} isLocal />
-              )
-            }
-          />
+            <Route
+              path="/notes"
+              element={<UserNotesPage API_URL={API_URL} />}
+            />
+            <Route path="/how-to-drive" element={<HowToDrivePage />} />
+            <Route
+              path="/note/:id"
+              element={<NoteDetailPage API_URL={API_URL} />}
+            />
+            <Route
+              path="/products/:productId"
+              element={
+                <ProductPage
+                  API_URL={API_URL}
+                  addToCart={addToCart}
+                  token={token}
+                  cart={cart}
+                  userRole={profile?.role || "user"}
+                />
+              }
+            />
+            <Route
+              path="/login"
+              element={
+                !token ? (
+                  <LoginPage API_URL={API_URL} setToken={setToken} />
+                ) : (
+                  <Navigate to="/" />
+                )
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                token ? (
+                  <ProfilePage profile={profile} />
+                ) : (
+                  <Navigate to="/login" />
+                )
+              }
+            />
+            <Route
+              path="/cart"
+              element={
+                token ? (
+                  <CartPage cart={cart} clearCart={clearCart} />
+                ) : (
+                  <CartPage
+                    cart={localCart}
+                    clearCart={clearLocalCart}
+                    isLocal
+                  />
+                )
+              }
+            />
 
-          <Route
-            path="/admin"
-            element={
-              token && profile?.role === "admin" ? (
-                <AdminPage API_URL={API_URL} token={token} />
-              ) : (
-                <Navigate to="/" />
-              )
-            }
-          />
+            <Route
+              path="/admin"
+              element={
+                token && profile?.role === "admin" ? (
+                  <AdminPage API_URL={API_URL} token={token} />
+                ) : (
+                  <Navigate to="/" />
+                )
+              }
+            />
 
-          <Route
-            path="/admin/notes"
-            element={
-              token && profile?.role === "admin" ? (
-                <AdminNotesPage API_URL={API_URL} token={token} />
-              ) : (
-                <Navigate to="/" />
-              )
-            }
-          />
-
+            <Route
+              path="/admin/notes"
+              element={
+                token && profile?.role === "admin" ? (
+                  <AdminNotesPage API_URL={API_URL} token={token} />
+                ) : (
+                  <Navigate to="/" />
+                )
+              }
+            />
           </Routes>
         </div>
 
-        {/* Чат-панель (правый блок) — показывается/скрывается мгновенно, без анимаций */}
-        {chatOpen && (
+        {/* Чат-панель на десктопе (боковая панель) */}
+        {chatOpen && !isMobile && (
           <div
             className="chatWrapper"
             style={{
@@ -289,23 +313,38 @@ export default function App() {
         )}
       </div>
 
+      {/* Чат overlay на мобильных — поверх всего, не меняет раскладку */}
+      {showChatAsOverlay && (
+        <div
+          className="chatMobileOverlay"
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+            display: "flex",
+            flexDirection: "column",
+            background: "#f7f8fc",
+          }}
+        >
+          <ChatWidget isOpen={true} onClose={handleChatClose} />
+        </div>
+      )}
+
       <style>{`
         body {
           overflow: hidden;
           height: 100%;
+          margin: 0;
         }
 
+        /* На мобильных body не трогаем, т.к. чат — overlay */
         @media (max-width: 768px) {
-          /* На мобильных когда чат ОТКРЫТ — скрываем основной контент и растягиваем чат на всю ширину */
-          .chatLayout.chatOpen .mainContent {
-            flex: 0 0 0% !important;
-            display: none !important;
-          }
-
-          .chatLayout.chatOpen .chatWrapper {
-            flex: 1 1 100% !important;
-            border-left: none !important;
-            box-shadow: none !important;
+          body {
+            overflow: visible;
+            height: auto;
           }
         }
       `}</style>

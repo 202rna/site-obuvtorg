@@ -12,6 +12,7 @@
   box-sizing: border-box;
   max-width: 100%;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 /* ===== Верхняя строка ===== */
