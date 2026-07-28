@@ -3,10 +3,70 @@ import { useSearchParams } from "react-router-dom";
 import ProductCard from "../components/ProductCard.jsx";
 
 const MOBILE_TABS = [
-  { id: "женская", label: "Женщинам" },
-  { id: "мужская", label: "Мужчинам" },
+  { id: "женские", label: "Женщинам" },
+  { id: "мужские", label: "Мужчинам" },
   { id: "для детей", label: "Для детей" },
 ];
+
+// Ключевые слова сезона
+const SEASON_KEYWORDS = ["лето", "осень", "зима", "весна"];
+
+// Ключевые слова видов обуви (поиск по подстроке — без привязки к опечаткам)
+const TYPE_KEYWORDS = [
+  "кроссовк", "кросовк",
+  "кед",
+  "сандал",
+  "босоножк",
+  "туфл",
+  "лодочк",
+  "балетк",
+  "сапог",
+  "угг",
+  "дут",
+  "валенк",
+  "ботинк",
+  "мокасин",
+  "лофер",
+  "слипон",
+  "эспадриль",
+  "шлепанец", "шлеп",
+  "тапк",
+  "сабо",
+  "топсайдер",
+  "пантолет",
+  "казак",
+  "челси",
+  "кросс",
+  "сникерс",
+  "слиппер",
+];
+
+// Ключевые слова пола (поиск по подстроке)
+const GENDER_KEYWORDS = ["жен", "муж", "дет"];
+
+function normalize(cat) {
+  if (!cat) return "";
+  return cat.toLowerCase().trim();
+}
+
+function classifyCategory(cat) {
+  const n = normalize(cat);
+  for (const kw of SEASON_KEYWORDS) {
+    if (n === kw || n.startsWith(kw)) return "season";
+  }
+  for (const kw of GENDER_KEYWORDS) {
+    if (n.includes(kw)) return "gender";
+  }
+  for (const kw of TYPE_KEYWORDS) {
+    if (n.includes(kw)) return "type";
+  }
+  return "other";
+}
+
+function displayCategory(cat) {
+  if (!cat) return cat;
+  return cat.charAt(0).toUpperCase() + cat.slice(1);
+}
 
 export default function ProductsPage({
   API_URL,
@@ -24,6 +84,9 @@ export default function ProductsPage({
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [seasonOpen, setSeasonOpen] = useState(false);
+  const [typeOpen, setTypeOpen] = useState(false);
 
   useEffect(() => {
     async function loadAllProducts() {
@@ -71,25 +134,34 @@ export default function ProductsPage({
     return products.filter((p) => (p.discount || 0) > 0);
   }, [products, discountedOnly]);
 
-  // Только "другие" категории (не женская, мужская, для детей)
-  const otherCategories = useMemo(() => {
+  // Разделяем категории по группам
+  const { seasonCategories, typeCategories, otherCategories } = useMemo(() => {
     const allCats = discountFiltered.flatMap((p) => p.categories || []);
     const unique = [...new Set(allCats)];
-    const priority = ["для детей", "мужская", "женская"];
-    return unique
-      .filter((cat) => !priority.includes(cat))
-      .sort((a, b) => a.localeCompare(b));
+    const season = [];
+    const type = [];
+    const other = [];
+    for (const cat of unique) {
+      const group = classifyCategory(cat);
+      if (group === "gender") continue; // половые — отдельные кнопки
+      if (group === "season") season.push(cat);
+      else if (group === "type") type.push(cat);
+      else other.push(cat);
+    }
+    return {
+      seasonCategories: season.sort((a, b) => a.localeCompare(b)),
+      typeCategories: type.sort((a, b) => a.localeCompare(b)),
+      otherCategories: other.sort((a, b) => a.localeCompare(b)),
+    };
   }, [discountFiltered]);
 
   const filteredProducts = useMemo(() => {
-    // Сначала применяем мобильный таб
     let result = discountFiltered;
     if (mobileTab) {
       result = result.filter(
-        (p) => p.categories && p.categories.includes(mobileTab),
+        (p) => p.categories && p.categories.some((c) => normalize(c) === mobileTab),
       );
     }
-    // Затем применяем фильтр категорий из URL
     if (selectedCategories.length > 0) {
       result = result.filter(
         (p) =>
@@ -133,7 +205,25 @@ export default function ProductsPage({
     return isInLocalCart ? isInLocalCart(product.id) : false;
   };
 
-  // Кнопка категории для десктоп-сайдбара
+  // Стили
+  const sidebarTabStyle = (active) => ({
+    display: "block",
+    width: "100%",
+    padding: "10px 16px",
+    border: "none",
+    background: active ? "#eef2ff" : "transparent",
+    color: active ? "#4f46e5" : "#475569",
+    cursor: "pointer",
+    fontWeight: active ? 700 : 500,
+    fontSize: "14px",
+    textAlign: "left",
+    fontFamily: '"Inter", "SF Pro Text", system-ui, -apple-system, sans-serif',
+    borderRadius: "8px",
+    transition: "all 0.2s ease",
+    letterSpacing: "0.03em",
+    textTransform: "uppercase",
+  });
+
   const sidebarCatStyle = (active) => ({
     display: "block",
     width: "100%",
@@ -151,22 +241,39 @@ export default function ProductsPage({
     letterSpacing: "0.02em",
   });
 
-  const sidebarTabStyle = (active) => ({
+  const sidebarGroupStyle = (open) => ({
     display: "block",
     width: "100%",
     padding: "10px 16px",
     border: "none",
-    background: active ? "#eef2ff" : "transparent",
-    color: active ? "#4f46e5" : "#475569",
+    background: open ? "#eef2ff" : "transparent",
+    color: open ? "#4f46e5" : "#475569",
     cursor: "pointer",
-    fontWeight: active ? 700 : 500,
-    fontSize: "14px",
+    fontWeight: 600,
+    fontSize: "13px",
     textAlign: "left",
     fontFamily: '"Inter", "SF Pro Text", system-ui, -apple-system, sans-serif',
     borderRadius: "8px",
     transition: "all 0.2s ease",
     letterSpacing: "0.03em",
     textTransform: "uppercase",
+  });
+
+  const sidebarSubcatStyle = (active) => ({
+    display: "block",
+    width: "100%",
+    padding: "6px 16px 6px 28px",
+    border: "none",
+    background: active ? "#eef2ff" : "transparent",
+    color: active ? "#4f46e5" : "#64748b",
+    cursor: "pointer",
+    fontWeight: active ? 600 : 400,
+    fontSize: "12px",
+    textAlign: "left",
+    fontFamily: '"Inter", "SF Pro Text", system-ui, -apple-system, sans-serif',
+    borderRadius: "6px",
+    transition: "all 0.2s ease",
+    letterSpacing: "0.01em",
   });
 
   if (loading) {
@@ -188,7 +295,6 @@ export default function ProductsPage({
   return (
     <>
       <style>{`
-        /* ===== МОБИЛКИ: табы сверху как sticky bar ===== */
         @media (max-width: 768px) {
           .page-wrapper {
             flex-direction: column !important;
@@ -220,8 +326,6 @@ export default function ProductsPage({
             gap: 12px !important;
           }
         }
-
-        /* ===== ДЕСКТОП: sidebar слева, товары справа ===== */
         @media (min-width: 769px) {
           .mobile-tab-bar {
             display: none !important;
@@ -236,7 +340,6 @@ export default function ProductsPage({
         }
       `}</style>
 
-      {/* Общая обёртка: на десктопе flex row, на мобилке column */}
       <div
         className="page-wrapper"
         style={{
@@ -245,7 +348,7 @@ export default function ProductsPage({
           fontFamily: "system-ui, -apple-system, sans-serif",
         }}
       >
-        {/* ========== МОБИЛЬНЫЕ ТАБЫ (только на мобилках) ========== */}
+        {/* ========== МОБИЛЬНЫЕ ТАБЫ ========== */}
         <div className="mobile-tab-bar" style={{ display: "none" }}>
           <div className="main-tabs">
             {MOBILE_TABS.map((tab) => {
@@ -312,7 +415,7 @@ export default function ProductsPage({
           )}
         </div>
 
-        {/* ========== ДЕСКТОП-САЙДБАР (только на десктопе) ========== */}
+        {/* ========== ДЕСКТОП-САЙДБАР ========== */}
         <aside
           className="desktop-sidebar"
           style={{
@@ -358,32 +461,110 @@ export default function ProductsPage({
           })}
 
           {/* Разделитель */}
-          {otherCategories.length > 0 && (
+          {(seasonCategories.length > 0 ||
+            typeCategories.length > 0 ||
+            otherCategories.length > 0) && (
             <div
-              style={{ margin: "16px 0 8px", borderTop: "1px solid #e2e8f0" }}
+              style={{ margin: "12px 0 8px", borderTop: "1px solid #e2e8f0" }}
             />
           )}
 
-          {/* Подкатегории */}
-          {otherCategories.map((cat) => {
-            const isSelected = selectedCategories.includes(cat);
-            return (
+          {/* ===== СЕЗОН (выпадающее меню) ===== */}
+          {seasonCategories.length > 0 && (
+            <div style={{ marginBottom: "4px" }}>
               <button
-                key={cat}
-                onClick={() => handleCategoryToggle(cat)}
-                style={sidebarCatStyle(isSelected)}
+                onClick={() => setSeasonOpen(!seasonOpen)}
+                style={sidebarGroupStyle(seasonOpen)}
               >
-                {cat} {isSelected && "✓"}
+                <span style={{ marginRight: "6px" }}>
+                  {seasonOpen ? "▾" : "▸"}
+                </span>
+                Сезон
               </button>
-            );
-          })}
+              {seasonOpen && (
+                <div style={{ marginTop: "2px", marginBottom: "4px" }}>
+                  {seasonCategories.map((cat) => {
+                    const isSelected = selectedCategories.includes(cat);
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => handleCategoryToggle(cat)}
+                        style={sidebarSubcatStyle(isSelected)}
+                      >
+                        {displayCategory(cat)} {isSelected && "✓"}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
-          {/* Кнопка сброса всех фильтров */}
+          {/* ===== ВИД (выпадающее меню) ===== */}
+          {typeCategories.length > 0 && (
+            <div style={{ marginBottom: "4px" }}>
+              <button
+                onClick={() => setTypeOpen(!typeOpen)}
+                style={sidebarGroupStyle(typeOpen)}
+              >
+                <span style={{ marginRight: "6px" }}>
+                  {typeOpen ? "▾" : "▸"}
+                </span>
+                Вид
+              </button>
+              {typeOpen && (
+                <div style={{ marginTop: "2px", marginBottom: "4px" }}>
+                  {typeCategories.map((cat) => {
+                    const isSelected = selectedCategories.includes(cat);
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => handleCategoryToggle(cat)}
+                        style={sidebarSubcatStyle(isSelected)}
+                      >
+                        {displayCategory(cat)} {isSelected && "✓"}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ===== ОСТАЛЬНЫЕ КАТЕГОРИИ (как раньше) ===== */}
+          {otherCategories.length > 0 && (
+            <>
+              {seasonCategories.length > 0 || typeCategories.length > 0 ? (
+                <div
+                  style={{
+                    margin: "8px 0 8px",
+                    borderTop: "1px solid #e2e8f0",
+                  }}
+                />
+              ) : null}
+              {otherCategories.map((cat) => {
+                const isSelected = selectedCategories.includes(cat);
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => handleCategoryToggle(cat)}
+                    style={sidebarCatStyle(isSelected)}
+                  >
+                    {cat} {isSelected && "✓"}
+                  </button>
+                );
+              })}
+            </>
+          )}
+
+          {/* Кнопка сброса фильтров */}
           {(mobileTab || selectedCategories.length > 0) && (
             <button
               onClick={() => {
                 setMobileTab("");
                 handleClearCategories();
+                setSeasonOpen(false);
+                setTypeOpen(false);
               }}
               style={{
                 display: "block",
@@ -407,7 +588,7 @@ export default function ProductsPage({
           )}
         </aside>
 
-        {/* ========== ОСНОВНОЙ КОНТЕНТ: товары ========== */}
+        {/* ========== ОСНОВНОЙ КОНТЕНТ ========== */}
         <main
           style={{
             flex: 1,
