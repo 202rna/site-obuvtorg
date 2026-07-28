@@ -243,12 +243,14 @@ export default function ProductPage({
   const [isJustAdded, setIsJustAdded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
+  const [editTitle, setEditTitle] = useState("");
   const [editPrice, setEditPrice] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editFullDescription, setEditFullDescription] = useState("");
   const [editDiscount, setEditDiscount] = useState("0");
   const [editCategories, setEditCategories] = useState("");
   const [editSizes, setEditSizes] = useState("");
+  const [editFiles, setEditFiles] = useState([]);
   const [editMsg, setEditMsg] = useState({ text: "", isError: false });
   const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
@@ -304,6 +306,7 @@ export default function ProductPage({
         if (response.ok) {
           setProduct(data);
           setImageIndex(0);
+          setEditTitle(data.title || "");
           setEditPrice(String(data.price ?? ""));
           setEditDescription(data.description || "");
           setEditFullDescription(data.full_description || "");
@@ -314,10 +317,11 @@ export default function ProductPage({
           setEditSizes(
             (Array.isArray(data.sizes) ? data.sizes : []).join(", "),
           );
+          setEditFiles([]);
         } else {
           setError(data.detail || "Товар не найден");
         }
-      } catch (err) {
+      } catch {
         if (isMounted) setError("Ошибка загрузки товара");
       } finally {
         if (isMounted) setLoading(false);
@@ -400,34 +404,69 @@ export default function ProductPage({
         .map(Number)
         .filter((n) => Number.isFinite(n));
 
+      // Если есть новые файлы — сначала загружаем их через PUT /products/{id}/images
+      let updatedImageUrls = null;
+      if (editFiles.length > 0) {
+        const imgFormData = new FormData();
+        editFiles.forEach((file) => imgFormData.append("files", file));
+
+        const imgResponse = await fetch(`${API_URL}/products/${id}/images`, {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: imgFormData,
+        });
+        const imgData = await imgResponse.json();
+        if (imgResponse.ok) {
+          updatedImageUrls = imgData.image_urls;
+        } else {
+          setEditMsg({
+            text: imgData.detail || "Не удалось обновить изображения",
+            isError: true,
+          });
+          setSaving(false);
+          return;
+        }
+      }
+
+      const updateBody = {
+        title: editTitle,
+        price: Number(editPrice),
+        description: editDescription,
+        full_description: editFullDescription,
+        discount: Number(editDiscount),
+        categories: parsedCategories,
+        sizes: parsedSizes,
+      };
+      if (updatedImageUrls) {
+        updateBody.image_urls = updatedImageUrls;
+      }
+
       const response = await fetch(`${API_URL}/products/${id}`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          price: Number(editPrice),
-          description: editDescription,
-          full_description: editFullDescription,
-          discount: Number(editDiscount),
-          categories: parsedCategories,
-          sizes: parsedSizes,
-        }),
+        body: JSON.stringify(updateBody),
       });
       const data = await response.json();
       if (response.ok) {
         setProduct((prev) => ({
           ...prev,
+          title: editTitle,
           price: Number(editPrice),
           description: editDescription,
           full_description: editFullDescription,
           discount: Number(editDiscount),
           categories: parsedCategories,
           sizes: parsedSizes,
+          ...(updatedImageUrls ? { image_urls: updatedImageUrls, image_url: updatedImageUrls[0] } : {}),
         }));
         setEditMsg({ text: "Товар обновлён", isError: false });
         setEditing(false);
+        setEditFiles([]);
       } else {
         setEditMsg({
           text: data.detail || "Не удалось обновить товар",
@@ -730,6 +769,15 @@ export default function ProductPage({
             </div>
           )}
 
+          <label style={styles.label}>Название товара</label>
+          <input
+            type="text"
+            style={styles.input}
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            required
+          />
+
           <label style={styles.label}>Цена (₽)</label>
           <input
             type="number"
@@ -784,6 +832,61 @@ export default function ProductPage({
             onChange={(e) => setEditSizes(e.target.value)}
             placeholder="36, 37, 38"
           />
+
+          <label style={styles.label}>Фото товара (заменить все)</label>
+          <input
+            id="editFileInput"
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ ...styles.input, padding: "8px" }}
+            onChange={(e) => {
+              const newFiles = Array.from(e.target.files);
+              if (newFiles.length > 0) {
+                setEditFiles((prev) => [...prev, ...newFiles]);
+              }
+              e.target.value = "";
+            }}
+          />
+          {editFiles.length > 0 && (
+            <ul style={{ marginTop: "8px", marginBottom: "12px", padding: "0", listStyle: "none" }}>
+              {editFiles.map((file, index) => (
+                <li
+                  key={index}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "6px 10px",
+                    backgroundColor: "#f8fafc",
+                    borderRadius: "6px",
+                    marginBottom: "4px",
+                    fontSize: "14px",
+                  }}
+                >
+                  <span>
+                    {file.name} ({(file.size / 1024).toFixed(0)} KB)
+                  </span>
+                  <button
+                    type="button"
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#ef4444",
+                      cursor: "pointer",
+                      fontSize: "16px",
+                      fontWeight: "bold",
+                      padding: "0 4px",
+                    }}
+                    onClick={() => setEditFiles((prev) => prev.filter((_, i) => i !== index))}
+                    title="Удалить файл"
+                  >
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
 
           <button
             type="submit"
