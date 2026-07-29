@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useLayoutEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import ProductCard from "../components/ProductCard.jsx";
 
@@ -158,6 +158,23 @@ export default function ProductsPage({
     }
     loadAllProducts();
   }, [API_URL]);
+
+  // Восстанавливаем позицию скролла ТОЛЬКО после загрузки товаров
+  useLayoutEffect(() => {
+    if (loading) return;
+    const savedScroll = sessionStorage.getItem("catalog_scroll");
+    if (!savedScroll) return;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const mainContent = document.querySelector(".mainContent");
+        if (mainContent) {
+          mainContent.scrollTop = parseInt(savedScroll, 10);
+        }
+      });
+    });
+    sessionStorage.removeItem("catalog_scroll");
+  }, [loading]);
 
   async function handleDeleteProduct(productId) {
     if (!window.confirm("Вы уверены, что хотите навсегда удалить этот товар?"))
@@ -951,6 +968,7 @@ export default function ProductsPage({
 
         {/* ========== ОСНОВНОЙ КОНТЕНТ ========== */}
         <main
+          className="mainContent"
           style={{
             flex: 1,
             padding: "24px",

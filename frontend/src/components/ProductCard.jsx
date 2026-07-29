@@ -57,6 +57,15 @@ export default function ProductCard({
     setImageIndex(0);
   }, []);
 
+  const handleCardClick = () => {
+    // Сохраняем позицию скролла каталога перед переходом на товар
+    const mainContent = document.querySelector(".mainContent");
+    if (mainContent) {
+      sessionStorage.setItem("catalog_scroll", mainContent.scrollTop);
+    }
+    navigate(`/products/${product.id}`);
+  };
+
   return (
     <div
       ref={cardRef}
@@ -64,7 +73,7 @@ export default function ProductCard({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onMouseMove={hovered ? handleMouseMove : undefined}
-      onClick={() => navigate(`/products/${product.id}`)}
+      onClick={handleCardClick}
     >
       {discount > 0 && <span className={styles.badge}>-{discount}%</span>}
 
