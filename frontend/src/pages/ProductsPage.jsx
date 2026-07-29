@@ -1,4 +1,10 @@
-import { useState, useEffect, useMemo, useLayoutEffect, useCallback } from "react";
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useLayoutEffect,
+  useCallback,
+} from "react";
 import { useSearchParams } from "react-router-dom";
 import ProductCard from "../components/ProductCard.jsx";
 
@@ -11,10 +17,7 @@ const MOBILE_TABS = [
 const PAGE_SIZE = 15;
 const SS_KEY = "products_page_state";
 
-// Ключевые слова сезона
 const SEASON_KEYWORDS = ["лето", "осень", "зима", "весна", "демисезон"];
-
-// Ключевые слова видов обуви (поиск по подстроке — без привязки к опечаткам)
 const TYPE_KEYWORDS = [
   "кроссовк",
   "кросовк",
@@ -45,11 +48,7 @@ const TYPE_KEYWORDS = [
   "сникерс",
   "слиппер",
 ];
-
-// Ключевые слова пола (поиск по подстроке)
 const GENDER_KEYWORDS = ["жен", "муж", "дет"];
-
-// Ключевые слова стран
 const COUNTRY_KEYWORDS = [
   "росси",
   "рф",
@@ -70,8 +69,6 @@ const COUNTRY_KEYWORDS = [
   "белорус",
   "казах",
 ];
-
-// Ключевые слова материалов
 const MATERIAL_KEYWORDS = [
   "кож",
   "текстил",
@@ -143,7 +140,6 @@ export default function ProductsPage({
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
-  // Показывать ли кнопку "Показать ещё" (будет false при активной фильтрации)
   const hasActiveFilters = mobileTab !== "" || selectedCategories.length > 0;
 
   const [seasonOpen, setSeasonOpen] = useState(false);
@@ -151,13 +147,63 @@ export default function ProductsPage({
   const [countryOpen, setCountryOpen] = useState(false);
   const [materialOpen, setMaterialOpen] = useState(false);
 
-  // Сохраняем/восстанавливаем состояние из sessionStorage для кнопки "назад"
+  // ----- НОВЫЙ СТЕЙТ ДЛЯ СТАТИЧЕСКИХ КАТЕГОРИЙ (не зависят от фильтров) -----
+  const [staticCategories, setStaticCategories] = useState({
+    season: [],
+    type: [],
+    country: [],
+    material: [],
+    other: [],
+  });
+
+  // ----- ЗАГРУЗКА КАТЕГОРИЙ ОДИН РАЗ ПРИ СТАРТЕ -----
+  useEffect(() => {
+    let isMounted = true;
+    async function initCategories() {
+      try {
+        const response = await fetch(`${API_URL}/products?limit=500`);
+        const data = await response.json();
+        if (isMounted && Array.isArray(data)) {
+          const allCats = data.flatMap((p) => p.categories || []);
+          const unique = [...new Set(allCats)];
+          const season = [];
+          const type = [];
+          const country = [];
+          const material = [];
+          const other = [];
+          for (const cat of unique) {
+            const group = classifyCategory(cat);
+            if (group === "gender") continue;
+            if (group === "season") season.push(cat);
+            else if (group === "type") type.push(cat);
+            else if (group === "country") country.push(cat);
+            else if (group === "material") material.push(cat);
+            else other.push(cat);
+          }
+          setStaticCategories({
+            season: season.sort((a, b) => a.localeCompare(b)),
+            type: type.sort((a, b) => a.localeCompare(b)),
+            country: country.sort((a, b) => a.localeCompare(b)),
+            material: material.sort((a, b) => a.localeCompare(b)),
+            other: other.sort((a, b) => a.localeCompare(b)),
+          });
+        }
+      } catch (err) {
+        console.error("Ошибка загрузки категорий:", err);
+      }
+    }
+    initCategories();
+    return () => {
+      isMounted = false;
+    };
+  }, [API_URL]);
+
+  // Сохраняем/восстанавливаем состояние из sessionStorage
   const savedState = useMemo(() => {
     try {
       const raw = sessionStorage.getItem(SS_KEY);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
-      // Проверяем, что сохранённые данные соответствуют текущему режиму скидок
       if (parsed.discountedOnly !== discountedOnly) return null;
       return parsed;
     } catch {
@@ -165,12 +211,11 @@ export default function ProductsPage({
     }
   }, [discountedOnly]);
 
-  // Первичная загрузка
+  // Загрузка товаров (основная)
   useEffect(() => {
     async function loadProducts() {
       setLoading(true);
       try {
-        // Пробуем восстановить сохранённые товары
         if (savedState && !hasActiveFilters && !discountedOnly) {
           const ss = savedState;
           setProducts(ss.products || []);
@@ -181,7 +226,6 @@ export default function ProductsPage({
         }
 
         if (hasActiveFilters || discountedOnly) {
-          // При активной фильтрации — загружаем всё
           const response = await fetch(
             `${API_URL}/products?limit=999${discountedOnly ? "&discounted_only=true" : ""}`,
           );
@@ -193,7 +237,6 @@ export default function ProductsPage({
           }
           setHasMore(false);
         } else {
-          // Без фильтров — загружаем первую страницу (15 товаров)
           const response = await fetch(
             `${API_URL}/products?limit=${PAGE_SIZE}${discountedOnly ? "&discounted_only=true" : ""}`,
           );
@@ -217,7 +260,6 @@ export default function ProductsPage({
     loadProducts();
   }, [API_URL, hasActiveFilters, discountedOnly, savedState]);
 
-  // Сохраняем состояние для кнопки "назад"
   const saveState = useCallback(() => {
     if (hasActiveFilters) return;
     sessionStorage.setItem(
@@ -226,11 +268,10 @@ export default function ProductsPage({
         products,
         hasMore,
         discountedOnly,
-      })
+      }),
     );
   }, [products, hasMore, hasActiveFilters, discountedOnly]);
 
-  // Загрузка следующей страницы
   async function handleLoadMore() {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
@@ -255,7 +296,6 @@ export default function ProductsPage({
     }
   }
 
-  // Восстанавливаем позицию скролла
   useLayoutEffect(() => {
     if (loading) return;
     const savedScroll = sessionStorage.getItem("catalog_scroll");
@@ -272,12 +312,6 @@ export default function ProductsPage({
     sessionStorage.removeItem("catalog_scroll");
   }, [loading]);
 
-  // При клике на товар сохраняем состояние
-  function handleProductClick() {
-    saveState();
-  }
-
-  // Перед размонтированием сохраняем состояние
   useEffect(() => {
     return () => {
       saveState();
@@ -303,45 +337,13 @@ export default function ProductsPage({
     }
   }
 
-  // --- Фильтрация ---
+  // Фильтруем по уценке
   const discountFiltered = useMemo(() => {
     if (!discountedOnly) return products;
     return products.filter((p) => (p.discount || 0) > 0);
   }, [products, discountedOnly]);
 
-  // Разделяем категории по группам
-  const {
-    seasonCategories,
-    typeCategories,
-    countryCategories,
-    materialCategories,
-    otherCategories,
-  } = useMemo(() => {
-    const allCats = discountFiltered.flatMap((p) => p.categories || []);
-    const unique = [...new Set(allCats)];
-    const season = [];
-    const type = [];
-    const country = [];
-    const material = [];
-    const other = [];
-    for (const cat of unique) {
-      const group = classifyCategory(cat);
-      if (group === "gender") continue; // половые — отдельные кнопки
-      if (group === "season") season.push(cat);
-      else if (group === "type") type.push(cat);
-      else if (group === "country") country.push(cat);
-      else if (group === "material") material.push(cat);
-      else other.push(cat);
-    }
-    return {
-      seasonCategories: season.sort((a, b) => a.localeCompare(b)),
-      typeCategories: type.sort((a, b) => a.localeCompare(b)),
-      countryCategories: country.sort((a, b) => a.localeCompare(b)),
-      materialCategories: material.sort((a, b) => a.localeCompare(b)),
-      otherCategories: other.sort((a, b) => a.localeCompare(b)),
-    };
-  }, [discountFiltered]);
-
+  // Фильтрованные товары для отображения
   const filteredProducts = useMemo(() => {
     let result = discountFiltered;
     if (mobileTab) {
@@ -387,7 +389,6 @@ export default function ProductsPage({
     });
   };
 
-  // Стили
   const sidebarTabStyle = (active) => ({
     display: "block",
     width: "100%",
@@ -497,12 +498,6 @@ export default function ProductsPage({
             display: flex;
             width: 100%;
           }
-          .mobile-tab-bar .sub-tabs {
-            display: flex;
-            flex-wrap: wrap;
-            width: 100%;
-            padding: 2px 0 6px 0;
-          }
           .products-grid {
             grid-template-columns: repeat(2, 1fr) !important;
             gap: 12px !important;
@@ -521,7 +516,6 @@ export default function ProductsPage({
           }
         }
       `}</style>
-
       <div
         className="page-wrapper"
         style={{
@@ -530,7 +524,7 @@ export default function ProductsPage({
           fontFamily: "system-ui, -apple-system, sans-serif",
         }}
       >
-        {/* ========== МОБИЛЬНЫЕ ТАБЫ ========== */}
+        {/* МОБИЛЬНЫЕ ТАБЫ */}
         <div className="mobile-tab-bar" style={{ display: "none" }}>
           <div className="main-tabs">
             {MOBILE_TABS.map((tab) => {
@@ -562,8 +556,6 @@ export default function ProductsPage({
               );
             })}
           </div>
-
-          {/* Мобильные выпадающие категории: Страна, Материал, Сезон, Вид */}
           <div
             style={{
               display: "flex",
@@ -574,7 +566,8 @@ export default function ProductsPage({
               justifyContent: "center",
             }}
           >
-            {countryCategories.length > 0 && (
+            {/* Используем staticCategories для отображения категорий */}
+            {staticCategories.country.length > 0 && (
               <div style={{ position: "relative" }}>
                 <button
                   onClick={() => setCountryOpen(!countryOpen)}
@@ -592,8 +585,7 @@ export default function ProductsPage({
                     transition: "all 0.2s",
                   }}
                 >
-                  {countryOpen ? "▴ " : "▾ "}
-                  Страна
+                  {countryOpen ? "▴ " : "▾ "}Страна
                 </button>
                 {countryOpen && (
                   <div
@@ -610,7 +602,7 @@ export default function ProductsPage({
                       padding: "4px 0",
                     }}
                   >
-                    {countryCategories.map((cat) => {
+                    {staticCategories.country.map((cat) => {
                       const isSelected = selectedCategories.includes(cat);
                       return (
                         <button
@@ -631,7 +623,7 @@ export default function ProductsPage({
                               '"Inter", "SF Pro Text", system-ui, sans-serif',
                           }}
                         >
-                          {displayCategory(cat)} {isSelected}
+                          {displayCategory(cat)}
                         </button>
                       );
                     })}
@@ -639,8 +631,7 @@ export default function ProductsPage({
                 )}
               </div>
             )}
-
-            {materialCategories.length > 0 && (
+            {staticCategories.material.length > 0 && (
               <div style={{ position: "relative" }}>
                 <button
                   onClick={() => setMaterialOpen(!materialOpen)}
@@ -658,8 +649,7 @@ export default function ProductsPage({
                     transition: "all 0.2s",
                   }}
                 >
-                  {materialOpen ? "▴ " : "▾ "}
-                  Материал
+                  {materialOpen ? "▴ " : "▾ "}Материал
                 </button>
                 {materialOpen && (
                   <div
@@ -676,7 +666,7 @@ export default function ProductsPage({
                       padding: "4px 0",
                     }}
                   >
-                    {materialCategories.map((cat) => {
+                    {staticCategories.material.map((cat) => {
                       const isSelected = selectedCategories.includes(cat);
                       return (
                         <button
@@ -697,7 +687,7 @@ export default function ProductsPage({
                               '"Inter", "SF Pro Text", system-ui, sans-serif',
                           }}
                         >
-                          {displayCategory(cat)} {isSelected}
+                          {displayCategory(cat)}
                         </button>
                       );
                     })}
@@ -705,8 +695,7 @@ export default function ProductsPage({
                 )}
               </div>
             )}
-
-            {seasonCategories.length > 0 && (
+            {staticCategories.season.length > 0 && (
               <div style={{ position: "relative" }}>
                 <button
                   onClick={() => setSeasonOpen(!seasonOpen)}
@@ -724,8 +713,7 @@ export default function ProductsPage({
                     transition: "all 0.2s",
                   }}
                 >
-                  {seasonOpen ? "▴ " : "▾ "}
-                  Сезон
+                  {seasonOpen ? "▴ " : "▾ "}Сезон
                 </button>
                 {seasonOpen && (
                   <div
@@ -742,7 +730,7 @@ export default function ProductsPage({
                       padding: "4px 0",
                     }}
                   >
-                    {seasonCategories.map((cat) => {
+                    {staticCategories.season.map((cat) => {
                       const isSelected = selectedCategories.includes(cat);
                       return (
                         <button
@@ -763,7 +751,7 @@ export default function ProductsPage({
                               '"Inter", "SF Pro Text", system-ui, sans-serif',
                           }}
                         >
-                          {displayCategory(cat)} {isSelected}
+                          {displayCategory(cat)}
                         </button>
                       );
                     })}
@@ -771,8 +759,7 @@ export default function ProductsPage({
                 )}
               </div>
             )}
-
-            {typeCategories.length > 0 && (
+            {staticCategories.type.length > 0 && (
               <div style={{ position: "relative" }}>
                 <button
                   onClick={() => setTypeOpen(!typeOpen)}
@@ -790,8 +777,7 @@ export default function ProductsPage({
                     transition: "all 0.2s",
                   }}
                 >
-                  {typeOpen ? "▴ " : "▾ "}
-                  Вид
+                  {typeOpen ? "▴ " : "▾ "}Вид
                 </button>
                 {typeOpen && (
                   <div
@@ -806,9 +792,11 @@ export default function ProductsPage({
                       zIndex: 20,
                       minWidth: "140px",
                       padding: "4px 0",
+                      maxHeight: "250px",
+                      overflowY: "auto",
                     }}
                   >
-                    {typeCategories.map((cat) => {
+                    {staticCategories.type.map((cat) => {
                       const isSelected = selectedCategories.includes(cat);
                       return (
                         <button
@@ -829,7 +817,7 @@ export default function ProductsPage({
                               '"Inter", "SF Pro Text", system-ui, sans-serif',
                           }}
                         >
-                          {displayCategory(cat)} {isSelected}
+                          {displayCategory(cat)}
                         </button>
                       );
                     })}
@@ -840,7 +828,7 @@ export default function ProductsPage({
           </div>
         </div>
 
-        {/* ========== ДЕСКТОП-САЙДБАР ========== */}
+        {/* ДЕСКТОП-САЙДБАР */}
         <aside
           className="desktop-sidebar"
           style={{
@@ -870,8 +858,6 @@ export default function ProductsPage({
           >
             Категории
           </div>
-
-          {/* Основные табы: Женщинам / Мужчинам / Детям */}
           {MOBILE_TABS.map((tab) => {
             const isActive = mobileTab === tab.id;
             return (
@@ -880,37 +866,34 @@ export default function ProductsPage({
                 onClick={() => setMobileTab(isActive ? "" : tab.id)}
                 style={sidebarTabStyle(isActive)}
               >
-                {tab.label} {isActive}
+                {tab.label}
               </button>
             );
           })}
-
-          {/* Разделитель */}
-          {(seasonCategories.length > 0 ||
-            typeCategories.length > 0 ||
-            countryCategories.length > 0 ||
-            materialCategories.length > 0 ||
-            otherCategories.length > 0) && (
+          {(staticCategories.season.length > 0 ||
+            staticCategories.type.length > 0 ||
+            staticCategories.country.length > 0 ||
+            staticCategories.material.length > 0 ||
+            staticCategories.other.length > 0) && (
             <div
               style={{ margin: "12px 0 8px", borderTop: "1px solid #e2e8f0" }}
             />
           )}
 
-          {/* ===== СТРАНА (выпадающее меню) ===== */}
-          {countryCategories.length > 0 && (
+          {/* СТРАНА */}
+          {staticCategories.country.length > 0 && (
             <div style={{ marginBottom: "4px" }}>
               <button
                 onClick={() => setCountryOpen(!countryOpen)}
                 style={sidebarGroupStyle(countryOpen)}
               >
                 <span style={{ marginRight: "6px" }}>
-                  {countryOpen ? "▾" : "▸"}
+                  {countryOpen ? "▾" : "▸"}Страна
                 </span>
-                Страна
               </button>
               {countryOpen && (
                 <div style={{ marginTop: "2px", marginBottom: "4px" }}>
-                  {countryCategories.map((cat) => {
+                  {staticCategories.country.map((cat) => {
                     const isSelected = selectedCategories.includes(cat);
                     return (
                       <button
@@ -918,7 +901,7 @@ export default function ProductsPage({
                         onClick={() => handleCategoryToggle(cat)}
                         style={sidebarSubcatStyle(isSelected)}
                       >
-                        {displayCategory(cat)} {isSelected}
+                        {displayCategory(cat)}
                       </button>
                     );
                   })}
@@ -927,21 +910,20 @@ export default function ProductsPage({
             </div>
           )}
 
-          {/* ===== МАТЕРИАЛ (выпадающее меню) ===== */}
-          {materialCategories.length > 0 && (
+          {/* МАТЕРИАЛ */}
+          {staticCategories.material.length > 0 && (
             <div style={{ marginBottom: "4px" }}>
               <button
                 onClick={() => setMaterialOpen(!materialOpen)}
                 style={sidebarGroupStyle(materialOpen)}
               >
                 <span style={{ marginRight: "6px" }}>
-                  {materialOpen ? "▾" : "▸"}
+                  {materialOpen ? "▾" : "▸"}Материал
                 </span>
-                Материал
               </button>
               {materialOpen && (
                 <div style={{ marginTop: "2px", marginBottom: "4px" }}>
-                  {materialCategories.map((cat) => {
+                  {staticCategories.material.map((cat) => {
                     const isSelected = selectedCategories.includes(cat);
                     return (
                       <button
@@ -949,7 +931,7 @@ export default function ProductsPage({
                         onClick={() => handleCategoryToggle(cat)}
                         style={sidebarSubcatStyle(isSelected)}
                       >
-                        {displayCategory(cat)} {isSelected}
+                        {displayCategory(cat)}
                       </button>
                     );
                   })}
@@ -958,21 +940,20 @@ export default function ProductsPage({
             </div>
           )}
 
-          {/* ===== СЕЗОН (выпадающее меню) ===== */}
-          {seasonCategories.length > 0 && (
+          {/* СЕЗОН */}
+          {staticCategories.season.length > 0 && (
             <div style={{ marginBottom: "4px" }}>
               <button
                 onClick={() => setSeasonOpen(!seasonOpen)}
                 style={sidebarGroupStyle(seasonOpen)}
               >
                 <span style={{ marginRight: "6px" }}>
-                  {seasonOpen ? "▾" : "▸"}
+                  {seasonOpen ? "▾" : "▸"}Сезон
                 </span>
-                Сезон
               </button>
               {seasonOpen && (
                 <div style={{ marginTop: "2px", marginBottom: "4px" }}>
-                  {seasonCategories.map((cat) => {
+                  {staticCategories.season.map((cat) => {
                     const isSelected = selectedCategories.includes(cat);
                     return (
                       <button
@@ -980,7 +961,7 @@ export default function ProductsPage({
                         onClick={() => handleCategoryToggle(cat)}
                         style={sidebarSubcatStyle(isSelected)}
                       >
-                        {displayCategory(cat)} {isSelected}
+                        {displayCategory(cat)}
                       </button>
                     );
                   })}
@@ -989,21 +970,20 @@ export default function ProductsPage({
             </div>
           )}
 
-          {/* ===== ВИД (выпадающее меню) ===== */}
-          {typeCategories.length > 0 && (
+          {/* ВИД */}
+          {staticCategories.type.length > 0 && (
             <div style={{ marginBottom: "4px" }}>
               <button
                 onClick={() => setTypeOpen(!typeOpen)}
                 style={sidebarGroupStyle(typeOpen)}
               >
                 <span style={{ marginRight: "6px" }}>
-                  {typeOpen ? "▾" : "▸"}
+                  {typeOpen ? "▾" : "▸"}Вид
                 </span>
-                Вид
               </button>
               {typeOpen && (
                 <div style={{ marginTop: "2px", marginBottom: "4px" }}>
-                  {typeCategories.map((cat) => {
+                  {staticCategories.type.map((cat) => {
                     const isSelected = selectedCategories.includes(cat);
                     return (
                       <button
@@ -1011,7 +991,7 @@ export default function ProductsPage({
                         onClick={() => handleCategoryToggle(cat)}
                         style={sidebarSubcatStyle(isSelected)}
                       >
-                        {displayCategory(cat)} {isSelected}
+                        {displayCategory(cat)}
                       </button>
                     );
                   })}
@@ -1020,13 +1000,13 @@ export default function ProductsPage({
             </div>
           )}
 
-          {/* ===== ОСТАЛЬНЫЕ КАТЕГОРИИ (как раньше) ===== */}
-          {otherCategories.length > 0 && (
+          {/* ОСТАЛЬНЫЕ КАТЕГОРИИ */}
+          {staticCategories.other.length > 0 && (
             <>
-              {seasonCategories.length > 0 ||
-              typeCategories.length > 0 ||
-              countryCategories.length > 0 ||
-              materialCategories.length > 0 ? (
+              {staticCategories.season.length > 0 ||
+              staticCategories.type.length > 0 ||
+              staticCategories.country.length > 0 ||
+              staticCategories.material.length > 0 ? (
                 <div
                   style={{
                     margin: "8px 0 8px",
@@ -1034,7 +1014,7 @@ export default function ProductsPage({
                   }}
                 />
               ) : null}
-              {otherCategories.map((cat) => {
+              {staticCategories.other.map((cat) => {
                 const isSelected = selectedCategories.includes(cat);
                 return (
                   <button
@@ -1042,7 +1022,7 @@ export default function ProductsPage({
                     onClick={() => handleCategoryToggle(cat)}
                     style={sidebarCatStyle(isSelected)}
                   >
-                    {cat} {isSelected}
+                    {cat}
                   </button>
                 );
               })}
@@ -1082,7 +1062,7 @@ export default function ProductsPage({
           )}
         </aside>
 
-        {/* ========== ОСНОВНОЙ КОНТЕНТ ========== */}
+        {/* ОСНОВНОЙ КОНТЕНТ */}
         <main
           className="mainContent"
           style={{
@@ -1118,15 +1098,12 @@ export default function ProductsPage({
                   <ProductCard
                     key={p.id}
                     product={p}
-                    userRole={userRole}
                     token={token}
+                    userRole={userRole}
                     onDelete={handleDeleteProduct}
-                    onProductClick={handleProductClick}
                   />
                 ))}
               </div>
-
-              {/* Кнопка "Показать ещё" */}
               {!hasActiveFilters && hasMore && (
                 <div style={{ textAlign: "center", marginBottom: "40px" }}>
                   <button
@@ -1159,9 +1136,7 @@ export default function ProductsPage({
                       }
                     }}
                   >
-                    {loadingMore
-                      ? "Загрузка..."
-                      : "Показать ещё"}
+                    {loadingMore ? "Загрузка..." : "Показать ещё"}
                   </button>
                 </div>
               )}

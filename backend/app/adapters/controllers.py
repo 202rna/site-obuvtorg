@@ -540,9 +540,9 @@ def create_user_router(
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ошибка загрузки файла")
 
     @router.delete("/note/{note_id}", status_code=status.HTTP_200_OK)
-    async def delete_note(note_id: int, current_ures: User = Depends(get_current_user)):
+    async def delete_note(note_id: int, current_user: User = Depends(get_current_user)):
         try:
-            return await delete_note_use_case.execute(user_role=current_ures.role, id=note_id)
+            return await delete_note_use_case.execute(user_role=current_user.role, id=note_id)
         except PermissionError as e:
             raise HTTPException(status_code=403, detail=str(e))
         except Exception as e:

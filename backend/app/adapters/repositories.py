@@ -139,23 +139,21 @@ class PostgresProductRepository(ProductRepositoryPort):
             )
 
     async def get_all(self, last_id: int | None, limit: int, discounted_only: bool = False) -> List[dict]:
-        
         async with self.pool.connection() as conn:
             async with conn.cursor() as cur:
-                discount_filter = "discount > 0"
                 if last_id is None:
                     if discounted_only:
                         await cur.execute(
-                            f"""
+                            """
                             SELECT p.id, p.title, p.price, p.description, p.image_url, p.image_urls,
                                    p.full_description, p.discount, p.sizes,
-                                   COALESCE(array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL), '{{}}') AS categories
+                                   COALESCE(array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL), '{}') AS categories
                             FROM products p
                             LEFT JOIN product_categories pc ON pc.product_id = p.id
                             LEFT JOIN categories c ON c.id = pc.category_id
-                            WHERE p.{discount_filter}
+                            WHERE p.discount > 0
                             GROUP BY p.id
-                            ORDER BY p.id ASC
+                            ORDER BY p.id DESC
                             LIMIT %s
                             """,
                             (limit,)
@@ -178,16 +176,16 @@ class PostgresProductRepository(ProductRepositoryPort):
                 else:
                     if discounted_only:
                         await cur.execute(
-                            f"""
+                            """
                             SELECT p.id, p.title, p.price, p.description, p.image_url, p.image_urls,
                                    p.full_description, p.discount, p.sizes,
-                                   COALESCE(array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL), '{{}}') AS categories
+                                   COALESCE(array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL), '{}') AS categories
                             FROM products p
                             LEFT JOIN product_categories pc ON pc.product_id = p.id
                             LEFT JOIN categories c ON c.id = pc.category_id
-                            WHERE p.id > %s AND p.{discount_filter}
+                            WHERE p.id < %s AND p.discount > 0
                             GROUP BY p.id
-                            ORDER BY p.id ASC
+                            ORDER BY p.id DESC
                             LIMIT %s
                             """,
                             (last_id, limit)
@@ -201,7 +199,7 @@ class PostgresProductRepository(ProductRepositoryPort):
                             FROM products p
                             LEFT JOIN product_categories pc ON pc.product_id = p.id
                             LEFT JOIN categories c ON c.id = pc.category_id
-                            WHERE p.id > %s
+                            WHERE p.id < %s
                             GROUP BY p.id
                             ORDER BY p.id DESC
                             LIMIT %s
