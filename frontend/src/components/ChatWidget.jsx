@@ -151,8 +151,6 @@ export default function ChatWidget({ isOpen, onClose }) {
           a: ({ href, children }) => (
             <a
               href={href}
-              target="_blank"
-              rel="noopener noreferrer"
               className="productLink"
             >
               {children}
@@ -187,8 +185,6 @@ export default function ChatWidget({ isOpen, onClose }) {
             <a
               key={product.id}
               href={product.product_url}
-              target="_blank"
-              rel="noopener noreferrer"
               className="productCard"
             >
               {imageUrl && (
