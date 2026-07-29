@@ -258,6 +258,26 @@ export default function ProductsPage({
     return result;
   }, [discountFiltered, selectedCategories, mobileTab]);
 
+  // Пагинация по 15 товаров
+  const [visibleCount, setVisibleCount] = useState(15);
+  const isFilterActive = selectedCategories.length > 0 || !!mobileTab;
+  const hasMore = !isFilterActive && visibleCount < filteredProducts.length;
+  const displayProducts = useMemo(() => {
+    if (isFilterActive) return filteredProducts;
+    return filteredProducts.slice(0, visibleCount);
+  }, [filteredProducts, visibleCount, isFilterActive]);
+
+  // Сбрасываем visibleCount при изменении фильтров
+  const prevFilterKey = useMemo(
+    () => `${selectedCategories.join(",")}|${mobileTab}|${discountedOnly}`,
+    [selectedCategories, mobileTab, discountedOnly]
+  );
+
+  useEffect(() => {
+    setVisibleCount(15);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prevFilterKey]);
+
   const handleCategoryToggle = (cat) => {
     setSearchParams((prev) => {
       const newParams = new URLSearchParams(prev);
@@ -989,7 +1009,7 @@ export default function ProductsPage({
             minWidth: 0,
           }}
         >
-          {filteredProducts.length === 0 ? (
+          {displayProducts.length === 0 ? (
             <div
               style={{
                 textAlign: "center",
@@ -1003,23 +1023,47 @@ export default function ProductsPage({
                 : "Товаров не найдено"}
             </div>
           ) : (
-            <div
-              className="products-grid"
-              style={{
-                display: "grid",
-                marginBottom: "40px",
-              }}
-            >
-              {filteredProducts.map((p) => (
-                <ProductCard
-                  key={p.id}
-                  product={p}
-                  userRole={userRole}
-                  token={token}
-                  onDelete={handleDeleteProduct}
-                />
-              ))}
-            </div>
+            <>
+              <div
+                className="products-grid"
+                style={{
+                  display: "grid",
+                  marginBottom: "40px",
+                }}
+              >
+                {displayProducts.map((p) => (
+                  <ProductCard
+                    key={p.id}
+                    product={p}
+                    userRole={userRole}
+                    token={token}
+                    onDelete={handleDeleteProduct}
+                  />
+                ))}
+              </div>
+              {hasMore && (
+                <div style={{ textAlign: "center", marginTop: "20px" }}>
+                  <button
+                    onClick={() => setVisibleCount((prev) => prev + 15)}
+                    style={{
+                      padding: "12px 40px",
+                      border: "2px solid #4f46e5",
+                      borderRadius: "10px",
+                      background: "#4f46e5",
+                      color: "#fff",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                      fontSize: "15px",
+                      fontFamily: '"Inter", "SF Pro Text", system-ui, -apple-system, sans-serif',
+                      transition: "all 0.2s ease",
+                      letterSpacing: "0.03em",
+                    }}
+                  >
+                    Показать ещё
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </main>
       </div>
