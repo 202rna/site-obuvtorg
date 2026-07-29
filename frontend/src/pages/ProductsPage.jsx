@@ -13,7 +13,8 @@ const SEASON_KEYWORDS = ["лето", "осень", "зима", "весна", "д
 
 // Ключевые слова видов обуви (поиск по подстроке — без привязки к опечаткам)
 const TYPE_KEYWORDS = [
-  "кроссовк", "кросовк",
+  "кроссовк",
+  "кросовк",
   "кед",
   "сандал",
   "босоножк",
@@ -29,7 +30,8 @@ const TYPE_KEYWORDS = [
   "лофер",
   "слипон",
   "эспадриль",
-  "шлепанец", "шлеп",
+  "шлепанец",
+  "шлеп",
   "тапк",
   "сабо",
   "топсайдер",
@@ -46,7 +48,8 @@ const GENDER_KEYWORDS = ["жен", "муж", "дет"];
 
 // Ключевые слова стран
 const COUNTRY_KEYWORDS = [
-  "росси", "рф",
+  "росси",
+  "рф",
   "итал",
   "кита",
   "герман",
@@ -75,8 +78,10 @@ const MATERIAL_KEYWORDS = [
   "лак",
   "резин",
   "полиуретан",
-  "термополиуретан", "тпу",
-  "этиленвинилацетат", "эва",
+  "термополиуретан",
+  "тпу",
+  "этиленвинилацетат",
+  "эва",
   "пвх",
   "нейлон",
   "полиэстер",
@@ -202,7 +207,13 @@ export default function ProductsPage({
   }, [products, discountedOnly]);
 
   // Разделяем категории по группам
-  const { seasonCategories, typeCategories, countryCategories, materialCategories, otherCategories } = useMemo(() => {
+  const {
+    seasonCategories,
+    typeCategories,
+    countryCategories,
+    materialCategories,
+    otherCategories,
+  } = useMemo(() => {
     const allCats = discountFiltered.flatMap((p) => p.categories || []);
     const unique = [...new Set(allCats)];
     const season = [];
@@ -232,7 +243,9 @@ export default function ProductsPage({
     let result = discountFiltered;
     if (mobileTab) {
       result = result.filter(
-        (p) => p.categories && p.categories.some((c) => normalize(c).includes(mobileTab)),
+        (p) =>
+          p.categories &&
+          p.categories.some((c) => normalize(c).includes(mobileTab)),
       );
     }
     if (selectedCategories.length > 0) {
@@ -515,7 +528,7 @@ export default function ProductsPage({
                               '"Inter", "SF Pro Text", system-ui, sans-serif',
                           }}
                         >
-                          {displayCategory(cat)} {isSelected && "✓"}
+                          {displayCategory(cat)} {isSelected}
                         </button>
                       );
                     })}
@@ -581,7 +594,7 @@ export default function ProductsPage({
                               '"Inter", "SF Pro Text", system-ui, sans-serif',
                           }}
                         >
-                          {displayCategory(cat)} {isSelected && "✓"}
+                          {displayCategory(cat)} {isSelected}
                         </button>
                       );
                     })}
@@ -647,7 +660,7 @@ export default function ProductsPage({
                               '"Inter", "SF Pro Text", system-ui, sans-serif',
                           }}
                         >
-                          {displayCategory(cat)} {isSelected && "✓"}
+                          {displayCategory(cat)} {isSelected}
                         </button>
                       );
                     })}
@@ -713,7 +726,7 @@ export default function ProductsPage({
                               '"Inter", "SF Pro Text", system-ui, sans-serif',
                           }}
                         >
-                          {displayCategory(cat)} {isSelected && "✓"}
+                          {displayCategory(cat)} {isSelected}
                         </button>
                       );
                     })}
@@ -764,7 +777,7 @@ export default function ProductsPage({
                 onClick={() => setMobileTab(isActive ? "" : tab.id)}
                 style={sidebarTabStyle(isActive)}
               >
-                {tab.label} {isActive && "✓"}
+                {tab.label} {isActive}
               </button>
             );
           })}
@@ -802,7 +815,7 @@ export default function ProductsPage({
                         onClick={() => handleCategoryToggle(cat)}
                         style={sidebarSubcatStyle(isSelected)}
                       >
-                        {displayCategory(cat)} {isSelected && "✓"}
+                        {displayCategory(cat)} {isSelected}
                       </button>
                     );
                   })}
@@ -833,7 +846,7 @@ export default function ProductsPage({
                         onClick={() => handleCategoryToggle(cat)}
                         style={sidebarSubcatStyle(isSelected)}
                       >
-                        {displayCategory(cat)} {isSelected && "✓"}
+                        {displayCategory(cat)} {isSelected}
                       </button>
                     );
                   })}
@@ -864,7 +877,7 @@ export default function ProductsPage({
                         onClick={() => handleCategoryToggle(cat)}
                         style={sidebarSubcatStyle(isSelected)}
                       >
-                        {displayCategory(cat)} {isSelected && "✓"}
+                        {displayCategory(cat)} {isSelected}
                       </button>
                     );
                   })}
@@ -895,7 +908,7 @@ export default function ProductsPage({
                         onClick={() => handleCategoryToggle(cat)}
                         style={sidebarSubcatStyle(isSelected)}
                       >
-                        {displayCategory(cat)} {isSelected && "✓"}
+                        {displayCategory(cat)} {isSelected}
                       </button>
                     );
                   })}
@@ -926,7 +939,7 @@ export default function ProductsPage({
                     onClick={() => handleCategoryToggle(cat)}
                     style={sidebarCatStyle(isSelected)}
                   >
-                    {cat} {isSelected && "✓"}
+                    {cat} {isSelected}
                   </button>
                 );
               })}
