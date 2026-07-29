@@ -137,6 +137,7 @@ export default function ProductsPage({
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
@@ -147,7 +148,7 @@ export default function ProductsPage({
   const [countryOpen, setCountryOpen] = useState(false);
   const [materialOpen, setMaterialOpen] = useState(false);
 
-  // ----- НОВЫЙ СТЕЙТ ДЛЯ СТАТИЧЕСКИХ КАТЕГОРИЙ (не зависят от фильтров) -----
+  // Статические категории
   const [staticCategories, setStaticCategories] = useState({
     season: [],
     type: [],
@@ -156,7 +157,7 @@ export default function ProductsPage({
     other: [],
   });
 
-  // ----- ЗАГРУЗКА КАТЕГОРИЙ ОДИН РАЗ ПРИ СТАРТЕ -----
+  // Загрузка категорий один раз при старте
   useEffect(() => {
     let isMounted = true;
     async function initCategories() {
@@ -198,7 +199,7 @@ export default function ProductsPage({
     };
   }, [API_URL]);
 
-  // Сохраняем/восстанавливаем состояние из sessionStorage
+  // Восстановление состояния из sessionStorage
   const savedState = useMemo(() => {
     try {
       const raw = sessionStorage.getItem(SS_KEY);
@@ -211,20 +212,30 @@ export default function ProductsPage({
     }
   }, [discountedOnly]);
 
-  // Загрузка товаров (основная)
+  // ОСНОВНАЯ ЗАГРУЗКА ТОВАРОВ — теперь без зависимости от products.length
   useEffect(() => {
     async function loadProducts() {
-      setLoading(true);
+      // Первая загрузка (products пуст) — показываем большой лоадер
+      const isInitial = products.length === 0;
+      if (isInitial) {
+        setLoading(true);
+      } else {
+        setIsFetching(true);
+      }
+
       try {
+        // Восстановление из sessionStorage только при чистой странице
         if (savedState && !hasActiveFilters && !discountedOnly) {
           const ss = savedState;
           setProducts(ss.products || []);
           setHasMore(ss.hasMore !== undefined ? ss.hasMore : true);
-          setLoading(false);
           sessionStorage.removeItem(SS_KEY);
+          setLoading(false);
+          setIsFetching(false);
           return;
         }
 
+        // Если есть активные фильтры или скидка — грузим все 999
         if (hasActiveFilters || discountedOnly) {
           const response = await fetch(
             `${API_URL}/products?limit=999${discountedOnly ? "&discounted_only=true" : ""}`,
@@ -237,6 +248,7 @@ export default function ProductsPage({
           }
           setHasMore(false);
         } else {
+          // Без фильтров — первая страница
           const response = await fetch(
             `${API_URL}/products?limit=${PAGE_SIZE}${discountedOnly ? "&discounted_only=true" : ""}`,
           );
@@ -255,11 +267,15 @@ export default function ProductsPage({
         setHasMore(false);
       } finally {
         setLoading(false);
+        setIsFetching(false);
       }
     }
-    loadProducts();
-  }, [API_URL, hasActiveFilters, discountedOnly, savedState]);
 
+    loadProducts();
+    // Убрали products.length и savedState из зависимостей — теперь useEffect срабатывает только при изменении фильтров
+  }, [API_URL, hasActiveFilters, discountedOnly]); // ❗️ Убрали savedState и products.length
+
+  // Сохраняем состояние для кнопки "назад"
   const saveState = useCallback(() => {
     if (hasActiveFilters) return;
     sessionStorage.setItem(
@@ -343,7 +359,7 @@ export default function ProductsPage({
     return products.filter((p) => (p.discount || 0) > 0);
   }, [products, discountedOnly]);
 
-  // Фильтрованные товары для отображения
+  // Финальная фильтрация по полу и категориям
   const filteredProducts = useMemo(() => {
     let result = discountFiltered;
     if (mobileTab) {
@@ -389,6 +405,7 @@ export default function ProductsPage({
     });
   };
 
+  // Стили (без изменений)
   const sidebarTabStyle = (active) => ({
     display: "block",
     width: "100%",
@@ -566,7 +583,6 @@ export default function ProductsPage({
               justifyContent: "center",
             }}
           >
-            {/* Используем staticCategories для отображения категорий */}
             {staticCategories.country.length > 0 && (
               <div style={{ position: "relative" }}>
                 <button
@@ -880,7 +896,6 @@ export default function ProductsPage({
             />
           )}
 
-          {/* СТРАНА */}
           {staticCategories.country.length > 0 && (
             <div style={{ marginBottom: "4px" }}>
               <button
@@ -910,7 +925,6 @@ export default function ProductsPage({
             </div>
           )}
 
-          {/* МАТЕРИАЛ */}
           {staticCategories.material.length > 0 && (
             <div style={{ marginBottom: "4px" }}>
               <button
@@ -940,7 +954,6 @@ export default function ProductsPage({
             </div>
           )}
 
-          {/* СЕЗОН */}
           {staticCategories.season.length > 0 && (
             <div style={{ marginBottom: "4px" }}>
               <button
@@ -970,7 +983,6 @@ export default function ProductsPage({
             </div>
           )}
 
-          {/* ВИД */}
           {staticCategories.type.length > 0 && (
             <div style={{ marginBottom: "4px" }}>
               <button
@@ -1000,7 +1012,6 @@ export default function ProductsPage({
             </div>
           )}
 
-          {/* ОСТАЛЬНЫЕ КАТЕГОРИИ */}
           {staticCategories.other.length > 0 && (
             <>
               {staticCategories.season.length > 0 ||
@@ -1029,7 +1040,6 @@ export default function ProductsPage({
             </>
           )}
 
-          {/* Кнопка сброса фильтров */}
           {(mobileTab || selectedCategories.length > 0) && (
             <button
               onClick={() => {
@@ -1070,6 +1080,7 @@ export default function ProductsPage({
             padding: "24px",
             boxSizing: "border-box",
             minWidth: 0,
+            position: "relative",
           }}
         >
           {filteredProducts.length === 0 ? (
@@ -1092,6 +1103,9 @@ export default function ProductsPage({
                 style={{
                   display: "grid",
                   marginBottom: "40px",
+                  opacity: isFetching ? 0.6 : 1,
+                  transition: "opacity 0.2s ease",
+                  pointerEvents: isFetching ? "none" : "auto",
                 }}
               >
                 {filteredProducts.map((p) => (
@@ -1104,6 +1118,40 @@ export default function ProductsPage({
                   />
                 ))}
               </div>
+              {isFetching && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    background: "rgba(255,255,255,0.85)",
+                    padding: "16px 32px",
+                    borderRadius: "12px",
+                    boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+                    fontSize: "16px",
+                    fontWeight: 500,
+                    color: "#4f46e5",
+                    zIndex: 5,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                  }}
+                >
+                  <span
+                    style={{
+                      display: "inline-block",
+                      width: "20px",
+                      height: "20px",
+                      border: "3px solid #e2e8f0",
+                      borderTop: "3px solid #4f46e5",
+                      borderRadius: "50%",
+                      animation: "spin 0.8s linear infinite",
+                    }}
+                  />
+                  Обновление...
+                </div>
+              )}
               {!hasActiveFilters && hasMore && (
                 <div style={{ textAlign: "center", marginBottom: "40px" }}>
                   <button
@@ -1144,6 +1192,12 @@ export default function ProductsPage({
           )}
         </main>
       </div>
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </>
   );
 }
