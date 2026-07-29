@@ -29,7 +29,13 @@ export default function Navigation({
     { id: "catalog", label: "Каталог", path: "/" },
     { id: "discount", label: "Скидки", path: "/discount", isRed: true },
     { id: "news", label: "Новости", path: "/notes", subLabel: "магазина" },
-    { id: "howtodrive", label: "Как проехать", path: "/how-to-drive" },
+    {
+      id: "howtodrive",
+      label: "Купить",
+      path: "/how-to-drive",
+      subLabel: "нашу обувь",
+      isGreen: true,
+    },
   ];
 
   const totalCartCount = (cartCount || 0) + (localCartCount || 0);
@@ -162,7 +168,9 @@ export default function Navigation({
                         ? "#000000"
                         : link.isRed
                           ? "#dc2626"
-                          : "#4b5563",
+                          : link.isGreen
+                            ? "#34d226" // Зеленый цвет (можно заменить на свой hex-код)
+                            : "#4b5563",
                     transition: "opacity 0.25s ease, color 0.25s ease",
                   }}
                   onMouseEnter={() => setHoveredLink(link.id)}

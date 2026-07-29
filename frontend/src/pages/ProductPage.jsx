@@ -462,7 +462,9 @@ export default function ProductPage({
           discount: Number(editDiscount),
           categories: parsedCategories,
           sizes: parsedSizes,
-          ...(updatedImageUrls ? { image_urls: updatedImageUrls, image_url: updatedImageUrls[0] } : {}),
+          ...(updatedImageUrls
+            ? { image_urls: updatedImageUrls, image_url: updatedImageUrls[0] }
+            : {}),
         }));
         setEditMsg({ text: "Товар обновлён", isError: false });
         setEditing(false);
@@ -701,12 +703,12 @@ export default function ProductPage({
       )}
 
       <div style={buttonContainerStyle}>
-        <button
+        {/* <button
           style={{ ...styles.btn, ...singleButtonStyle }}
           onClick={handleGoToDrive}
         >
           Купить
-        </button>
+        </button> */}
 
         {token && (
           <button
@@ -849,7 +851,14 @@ export default function ProductPage({
             }}
           />
           {editFiles.length > 0 && (
-            <ul style={{ marginTop: "8px", marginBottom: "12px", padding: "0", listStyle: "none" }}>
+            <ul
+              style={{
+                marginTop: "8px",
+                marginBottom: "12px",
+                padding: "0",
+                listStyle: "none",
+              }}
+            >
               {editFiles.map((file, index) => (
                 <li
                   key={index}
@@ -878,7 +887,9 @@ export default function ProductPage({
                       fontWeight: "bold",
                       padding: "0 4px",
                     }}
-                    onClick={() => setEditFiles((prev) => prev.filter((_, i) => i !== index))}
+                    onClick={() =>
+                      setEditFiles((prev) => prev.filter((_, i) => i !== index))
+                    }
                     title="Удалить файл"
                   >
                     ✕
