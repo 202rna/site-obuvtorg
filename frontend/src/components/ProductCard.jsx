@@ -8,6 +8,7 @@ export default function ProductCard({
   userRole,
   token,
   onDelete,
+  onProductClick,
 }) {
   const navigate = useNavigate();
   const cardRef = useRef(null);
@@ -62,6 +63,10 @@ export default function ProductCard({
     const mainContent = document.querySelector(".mainContent");
     if (mainContent) {
       sessionStorage.setItem("catalog_scroll", mainContent.scrollTop);
+    }
+    // Вызываем колбэк для сохранения состояния товаров перед уходом
+    if (onProductClick) {
+      onProductClick();
     }
     navigate(`/products/${product.id}`);
   };

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useLayoutEffect } from "react";
+import { useState, useEffect, useMemo, useLayoutEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import ProductCard from "../components/ProductCard.jsx";
 
@@ -7,6 +7,9 @@ const MOBILE_TABS = [
   { id: "муж", label: "Мужчинам" },
   { id: "дет", label: "Для детей" },
 ];
+
+const PAGE_SIZE = 15;
+const SS_KEY = "products_page_state";
 
 // Ключевые слова сезона
 const SEASON_KEYWORDS = ["лето", "осень", "зима", "весна", "демисезон"];
@@ -137,34 +140,122 @@ export default function ProductsPage({
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
+  // Показывать ли кнопку "Показать ещё" (будет false при активной фильтрации)
+  const hasActiveFilters = mobileTab !== "" || selectedCategories.length > 0;
 
   const [seasonOpen, setSeasonOpen] = useState(false);
   const [typeOpen, setTypeOpen] = useState(false);
   const [countryOpen, setCountryOpen] = useState(false);
   const [materialOpen, setMaterialOpen] = useState(false);
 
+  // Сохраняем/восстанавливаем состояние из sessionStorage для кнопки "назад"
+  const savedState = useMemo(() => {
+    try {
+      const raw = sessionStorage.getItem(SS_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      // Проверяем, что сохранённые данные соответствуют текущему режиму скидок
+      if (parsed.discountedOnly !== discountedOnly) return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  }, [discountedOnly]);
+
+  // Первичная загрузка
   useEffect(() => {
-    async function loadAllProducts() {
+    async function loadProducts() {
       setLoading(true);
       try {
-        const response = await fetch(`${API_URL}/products?limit=999`);
-        const data = await response.json();
-        if (Array.isArray(data)) {
-          setProducts(data);
+        // Пробуем восстановить сохранённые товары
+        if (savedState && !hasActiveFilters && !discountedOnly) {
+          const ss = savedState;
+          setProducts(ss.products || []);
+          setHasMore(ss.hasMore !== undefined ? ss.hasMore : true);
+          setLoading(false);
+          sessionStorage.removeItem(SS_KEY);
+          return;
+        }
+
+        if (hasActiveFilters || discountedOnly) {
+          // При активной фильтрации — загружаем всё
+          const response = await fetch(
+            `${API_URL}/products?limit=999${discountedOnly ? "&discounted_only=true" : ""}`,
+          );
+          const data = await response.json();
+          if (Array.isArray(data)) {
+            setProducts(data);
+          } else {
+            setProducts([]);
+          }
+          setHasMore(false);
         } else {
-          setProducts([]);
+          // Без фильтров — загружаем первую страницу (15 товаров)
+          const response = await fetch(
+            `${API_URL}/products?limit=${PAGE_SIZE}${discountedOnly ? "&discounted_only=true" : ""}`,
+          );
+          const data = await response.json();
+          if (Array.isArray(data)) {
+            setProducts(data);
+            setHasMore(data.length >= PAGE_SIZE);
+          } else {
+            setProducts([]);
+            setHasMore(false);
+          }
         }
       } catch (err) {
         console.error("Ошибка загрузки товаров:", err);
         setProducts([]);
+        setHasMore(false);
       } finally {
         setLoading(false);
       }
     }
-    loadAllProducts();
-  }, [API_URL]);
+    loadProducts();
+  }, [API_URL, hasActiveFilters, discountedOnly, savedState]);
 
-  // Восстанавливаем позицию скролла ТОЛЬКО после загрузки товаров
+  // Сохраняем состояние для кнопки "назад"
+  const saveState = useCallback(() => {
+    if (hasActiveFilters) return;
+    sessionStorage.setItem(
+      SS_KEY,
+      JSON.stringify({
+        products,
+        hasMore,
+        discountedOnly,
+      })
+    );
+  }, [products, hasMore, hasActiveFilters, discountedOnly]);
+
+  // Загрузка следующей страницы
+  async function handleLoadMore() {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const lastProduct = products[products.length - 1];
+      const lastId = lastProduct ? lastProduct.id : 0;
+
+      const response = await fetch(
+        `${API_URL}/products?last_id=${lastId}&limit=${PAGE_SIZE}${discountedOnly ? "&discounted_only=true" : ""}`,
+      );
+      const data = await response.json();
+      if (Array.isArray(data) && data.length > 0) {
+        setProducts((prev) => [...prev, ...data]);
+        setHasMore(data.length >= PAGE_SIZE);
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("Ошибка загрузки следующих товаров:", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
+  // Восстанавливаем позицию скролла
   useLayoutEffect(() => {
     if (loading) return;
     const savedScroll = sessionStorage.getItem("catalog_scroll");
@@ -180,6 +271,18 @@ export default function ProductsPage({
     });
     sessionStorage.removeItem("catalog_scroll");
   }, [loading]);
+
+  // При клике на товар сохраняем состояние
+  function handleProductClick() {
+    saveState();
+  }
+
+  // Перед размонтированием сохраняем состояние
+  useEffect(() => {
+    return () => {
+      saveState();
+    };
+  }, [saveState]);
 
   async function handleDeleteProduct(productId) {
     if (!window.confirm("Вы уверены, что хотите навсегда удалить этот товар?"))
@@ -257,26 +360,6 @@ export default function ProductsPage({
     }
     return result;
   }, [discountFiltered, selectedCategories, mobileTab]);
-
-  // Пагинация по 15 товаров
-  const [visibleCount, setVisibleCount] = useState(15);
-  const isFilterActive = selectedCategories.length > 0 || !!mobileTab;
-  const hasMore = !isFilterActive && visibleCount < filteredProducts.length;
-  const displayProducts = useMemo(() => {
-    if (isFilterActive) return filteredProducts;
-    return filteredProducts.slice(0, visibleCount);
-  }, [filteredProducts, visibleCount, isFilterActive]);
-
-  // Сбрасываем visibleCount при изменении фильтров
-  const prevFilterKey = useMemo(
-    () => `${selectedCategories.join(",")}|${mobileTab}|${discountedOnly}`,
-    [selectedCategories, mobileTab, discountedOnly]
-  );
-
-  useEffect(() => {
-    setVisibleCount(15);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prevFilterKey]);
 
   const handleCategoryToggle = (cat) => {
     setSearchParams((prev) => {
@@ -1009,7 +1092,7 @@ export default function ProductsPage({
             minWidth: 0,
           }}
         >
-          {displayProducts.length === 0 ? (
+          {filteredProducts.length === 0 ? (
             <div
               style={{
                 textAlign: "center",
@@ -1031,35 +1114,54 @@ export default function ProductsPage({
                   marginBottom: "40px",
                 }}
               >
-                {displayProducts.map((p) => (
+                {filteredProducts.map((p) => (
                   <ProductCard
                     key={p.id}
                     product={p}
                     userRole={userRole}
                     token={token}
                     onDelete={handleDeleteProduct}
+                    onProductClick={handleProductClick}
                   />
                 ))}
               </div>
-              {hasMore && (
-                <div style={{ textAlign: "center", marginTop: "20px" }}>
+
+              {/* Кнопка "Показать ещё" */}
+              {!hasActiveFilters && hasMore && (
+                <div style={{ textAlign: "center", marginBottom: "40px" }}>
                   <button
-                    onClick={() => setVisibleCount((prev) => prev + 15)}
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
                     style={{
                       padding: "12px 40px",
                       border: "2px solid #4f46e5",
-                      borderRadius: "10px",
-                      background: "#4f46e5",
-                      color: "#fff",
-                      cursor: "pointer",
+                      borderRadius: "8px",
+                      background: "#fff",
+                      color: "#4f46e5",
+                      cursor: loadingMore ? "not-allowed" : "pointer",
                       fontWeight: 600,
-                      fontSize: "15px",
-                      fontFamily: '"Inter", "SF Pro Text", system-ui, -apple-system, sans-serif',
-                      transition: "all 0.2s ease",
-                      letterSpacing: "0.03em",
+                      fontSize: "14px",
+                      fontFamily:
+                        '"Inter", "SF Pro Text", system-ui, -apple-system, sans-serif',
+                      transition: "all 0.2s",
+                      opacity: loadingMore ? 0.6 : 1,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!loadingMore) {
+                        e.currentTarget.style.background = "#4f46e5";
+                        e.currentTarget.style.color = "#fff";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!loadingMore) {
+                        e.currentTarget.style.background = "#fff";
+                        e.currentTarget.style.color = "#4f46e5";
+                      }
                     }}
                   >
-                    Показать ещё
+                    {loadingMore
+                      ? "Загрузка..."
+                      : "Показать ещё"}
                   </button>
                 </div>
               )}
