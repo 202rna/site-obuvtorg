@@ -703,12 +703,12 @@ export default function ProductPage({
       )}
 
       <div style={buttonContainerStyle}>
-        {/* <button
+        <button
           style={{ ...styles.btn, ...singleButtonStyle }}
           onClick={handleGoToDrive}
         >
           Купить
-        </button> */}
+        </button>
 
         {token && (
           <button

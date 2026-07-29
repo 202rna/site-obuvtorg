@@ -109,36 +109,6 @@
   margin-right: 8px;
 }
 
-.buyBtn {
-  padding: 14px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #ffffff;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  width: 100%;
-  background-color: #10b981;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
-  transition: all 0.2s;
-  font-family: inherit;
-}
-
-.buyBtn:hover:not(:disabled) {
-  background-color: #059669;
-  transform: translateY(-1px);
-}
-
-.buyBtn:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.inCart {
-  background-color: #64748b !important;
-  cursor: default !important;
-  box-shadow: none !important;
-}
-
 .deleteBtn {
   padding: 12px;
   font-size: 14px;
@@ -185,12 +155,6 @@
   .price {
     font-size: 16px !important;
     margin-bottom: 12px !important;
-  }
-
-  .buyBtn {
-    padding: 10px 6px !important;
-    font-size: 12px !important;
-    border-radius: 8px !important;
   }
 
   .deleteBtn {

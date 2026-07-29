@@ -121,11 +121,8 @@ function displayCategory(cat) {
 
 export default function ProductsPage({
   API_URL,
-  addToCart,
   token,
   userRole,
-  cart = [],
-  isInLocalCart,
   discountedOnly = false,
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -255,13 +252,6 @@ export default function ProductsPage({
       newParams.delete("category");
       return newParams;
     });
-  };
-
-  const isInCartCombined = (product) => {
-    if (token) {
-      return cart.some((item) => String(item.id) === String(product.id));
-    }
-    return isInLocalCart ? isInLocalCart(product.id) : false;
   };
 
   // Стили
@@ -993,8 +983,6 @@ export default function ProductsPage({
                 <ProductCard
                   key={p.id}
                   product={p}
-                  isInCart={isInCartCombined(p)}
-                  onAddToCart={addToCart}
                   userRole={userRole}
                   token={token}
                   onDelete={handleDeleteProduct}

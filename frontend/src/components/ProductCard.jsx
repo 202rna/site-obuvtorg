@@ -5,8 +5,6 @@ import styles from "./ProductCard.module.css";
 
 export default function ProductCard({
   product,
-  isInCart,
-  onAddToCart,
   userRole,
   token,
   onDelete,
@@ -101,29 +99,6 @@ export default function ProductCard({
           )}
           {formatPrice(finalPrice)} ₽
         </div>
-
-        {token ? (
-          <button
-            className={`${styles.buyBtn} ${isInCart ? styles.inCart : ""}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!isInCart) onAddToCart(product);
-            }}
-            disabled={isInCart}
-          >
-            {isInCart ? "✓ В корзине" : "🛒 В корзину"}
-          </button>
-        ) : (
-          <button
-            className={styles.buyBtn}
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate("/how-to-drive");
-            }}
-          >
-            📍 Купить
-          </button>
-        )}
 
         {token && userRole === "admin" && (
           <button
