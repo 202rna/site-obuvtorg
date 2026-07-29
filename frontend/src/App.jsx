@@ -21,7 +21,7 @@ export default function App() {
   const [token, setToken] = useState(localStorage.getItem("token") || "");
   const [profile, setProfile] = useState(null);
   const [cart, setCart] = useState([]);
-  const [chatOpen, setChatOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(() => window.innerWidth > 768);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [isHuman, setIsHuman] = useState(() => {
     return sessionStorage.getItem("captcha_passed") === "true";
