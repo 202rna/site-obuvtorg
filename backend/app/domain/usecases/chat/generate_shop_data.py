@@ -6,7 +6,7 @@ import json
 import os
 from datetime import datetime, timezone
 from app.domain.ports import ProductRepositoryPort, NoteRepositoryPort
-
+import aiofiles
 
 SHOP_DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "static", "shop_data.json")
 
@@ -79,8 +79,22 @@ async def generate_shop_data(
     return shop_data
 
 
+# async def load_shop_data() -> dict | None:
+#     """Загружает shop_data.json из файла.
+    
+#     Returns:
+#         dict | None: Данные магазина или None, если файла нет.
+#     """
+#     if not os.path.exists(SHOP_DATA_PATH):
+#         return None
+#     try:
+#         with open(SHOP_DATA_PATH, "r", encoding="utf-8") as f:
+#             return json.load(f)
+#     except (json.JSONDecodeError, IOError):
+#         return None
+    
 async def load_shop_data() -> dict | None:
-    """Загружает shop_data.json из файла.
+    """Загружает shop_data.json из файла асинхронно.
     
     Returns:
         dict | None: Данные магазина или None, если файла нет.
@@ -88,7 +102,8 @@ async def load_shop_data() -> dict | None:
     if not os.path.exists(SHOP_DATA_PATH):
         return None
     try:
-        with open(SHOP_DATA_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
+        async with aiofiles.open(SHOP_DATA_PATH, "r", encoding="utf-8") as f:
+            content = await f.read()
+            return json.loads(content)
     except (json.JSONDecodeError, IOError):
         return None

@@ -744,7 +744,6 @@ def create_chat_router() -> APIRouter:
                 base_url=ai_base_url,
             )
             
-            # Загружаем данные магазина, чтобы получить инфу о рекомендованных товарах
             shop_data = await load_shop_data()
             recommended_products = []
             
