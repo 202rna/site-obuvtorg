@@ -13,3 +13,7 @@ __pycache__/
 None
 dict
 list[[]str[]]
+backend/app/static/
+backend/run.py
+db_dump.sql
+evaluation_report.md

@@ -214,14 +214,17 @@ class PostgresProductRepository(ProductRepositoryPort):
             async with conn.cursor() as cur:
                 await cur.execute(
                     """
-                    SELECT DISTINCT name
-                    FROM categories
-                    WHERE name IS NOT NULL AND TRIM(name) <> ''
-                    ORDER BY name
+                    SELECT DISTINCT c.name
+                    FROM categories c
+                    INNER JOIN product_categories pc ON c.id = pc.category_id
+                    INNER JOIN products p ON pc.product_id = p.id
+                    WHERE c.name IS NOT NULL AND TRIM(c.name) <> ''
+                    ORDER BY c.name
                     """
                 )
                 rows = await cur.fetchall()
                 return [row[0] for row in rows]
+
 
     async def save(
         self,

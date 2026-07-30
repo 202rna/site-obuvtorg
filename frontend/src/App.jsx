@@ -23,9 +23,7 @@ export default function App() {
   const [cart, setCart] = useState([]);
   const [chatOpen, setChatOpen] = useState(() => window.innerWidth > 768);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  const [isHuman, setIsHuman] = useState(() => {
-    return sessionStorage.getItem("captcha_passed") === "true";
-  });
+  // Удалить переменные isHuman и setIsHuman
 
   const {
     localCart,
@@ -144,7 +142,7 @@ export default function App() {
   const showChatAsOverlay = chatOpen && isMobile;
 
   return (
-    <CaptchaGate onPass={() => setIsHuman(true)}>
+    <CaptchaGate>
       <div
         className="appRoot"
         style={{
@@ -203,21 +201,7 @@ export default function App() {
                   />
                 }
               />
-              <Route
-                path="/discount"
-                element={
-                  <ProductsPage
-                    API_URL={API_URL}
-                    addToCart={addToCart}
-                    token={token}
-                    userRole={profile?.role || "user"}
-                    cart={cart}
-                    localCart={localCart}
-                    isInLocalCart={isInLocalCart}
-                    discountedOnly
-                  />
-                }
-              />
+              // Удалён маршрут path="/discount"
 
               <Route
                 path="/notes"

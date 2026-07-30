@@ -18,7 +18,6 @@ export default function Navigation({
   // Определяем активный пункт
   const activeLink = (() => {
     if (location.pathname === "/") return "catalog";
-    if (location.pathname === "/discount") return "discount";
     if (location.pathname === "/notes") return "news";
     if (location.pathname === "/how-to-drive") return "howtodrive";
     if (location.pathname === "/shop") return "shop";
@@ -27,7 +26,7 @@ export default function Navigation({
 
   const navLinks = [
     { id: "catalog", label: "Каталог", path: "/" },
-    { id: "discount", label: "Скидки", path: "/discount", isRed: true },
+    // Убрана ссылка на "Скидки"
     { id: "news", label: "Новости", path: "/notes", subLabel: "магазина" },
     {
       id: "howtodrive",

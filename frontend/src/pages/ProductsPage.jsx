@@ -113,8 +113,13 @@ export default function ProductsPage({
     const controller = new AbortController();
 
     async function loadProducts() {
-      const savedProducts = sessionStorage.getItem("catalog_products");
-      const savedHasMore = sessionStorage.getItem("catalog_hasMore");
+      // 🛠️ ИСПРАВЛЕНО: Кэшируем данные с привязкой к уникальному ключу фильтрации
+      const savedProducts = sessionStorage.getItem(
+        `catalog_products_${filterKey}`,
+      );
+      const savedHasMore = sessionStorage.getItem(
+        `catalog_hasMore_${filterKey}`,
+      );
 
       if (savedProducts) {
         setProducts(JSON.parse(savedProducts));
@@ -122,6 +127,7 @@ export default function ProductsPage({
         setLoading(false);
         return;
       }
+
       setLoading(true);
       setLoadError("");
       try {
@@ -144,10 +150,13 @@ export default function ProductsPage({
         setProducts(items);
         setHasMore(Boolean(data.has_more));
 
-        sessionStorage.setItem("catalog_products", JSON.stringify(items));
-
+        // 🛠️ ИСПРАВЛЕНО: Сохраняем в кэш тоже с привязкой к ключу
         sessionStorage.setItem(
-          "catalog_hasMore",
+          `catalog_products_${filterKey}`,
+          JSON.stringify(items),
+        );
+        sessionStorage.setItem(
+          `catalog_hasMore_${filterKey}`,
           JSON.stringify(Boolean(data.has_more)),
         );
       } catch (err) {
@@ -170,7 +179,7 @@ export default function ProductsPage({
       isMounted = false;
       controller.abort();
     };
-  }, [API_URL, filterKey]);
+  }, [API_URL, filterKey]); // filterKey контролирует очистку контекста
 
   const handleLoadMore = useCallback(async () => {
     if (loadingMore || !hasMore || products.length === 0) return;
@@ -192,10 +201,13 @@ export default function ProductsPage({
         setProducts((prev) => {
           const updated = [...prev, ...items];
 
-          sessionStorage.setItem("catalog_products", JSON.stringify(updated));
-
+          // Внутри handleLoadMore замените строки сохранения на:
           sessionStorage.setItem(
-            "catalog_hasMore",
+            `catalog_products_${filterKey}`,
+            JSON.stringify(updated),
+          );
+          sessionStorage.setItem(
+            `catalog_hasMore_${filterKey}`,
             JSON.stringify(Boolean(data.has_more)),
           );
 
