@@ -233,8 +233,6 @@ export default function ProductsPage({
           return;
         }
 
-        // Определяем, какие категории отправить на бэкенд
-        // 1. Создаем словарь перевода ID табов в реальные названия категорий вашей БД
         const tabMapping = {
           жен: "Женщинам", // 👈 Напишите здесь точное имя категории из вашей БД (например "Женщинам" или "женщины")
           муж: "Мужчинам", // 👈 Напишите здесь точное имя категории из вашей БД (например "Мужчинам" или "мужчины")
@@ -284,7 +282,6 @@ export default function ProductsPage({
     }
 
     loadProducts();
-    // Добавляем mobileTab и searchParams в зависимости, чтобы перезагружать при кликах
   }, [API_URL, mobileTab, searchParams, discountedOnly]);
 
   // Сохраняем состояние для кнопки "назад"
@@ -307,7 +304,6 @@ export default function ProductsPage({
       const lastProduct = products[products.length - 1];
       const lastId = lastProduct ? lastProduct.id : 0;
 
-      // Словарь перевода для пагинации
       const tabMapping = {
         жен: "Женщинам",
         муж: "Мужчинам",
@@ -326,7 +322,6 @@ export default function ProductsPage({
         targetCategories = [...targetCategories, ...selectedCategories];
       }
 
-      // Добавляем все категории в URL следующей страницы
       for (const cat of targetCategories) {
         url += `&category=${encodeURIComponent(cat)}`;
       }
