@@ -1,9 +1,9 @@
 import {
   useState,
   useEffect,
-  useMemo,
   useLayoutEffect,
   useCallback,
+  useMemo,
 } from "react";
 import { useSearchParams } from "react-router-dom";
 import ProductCard from "../components/ProductCard.jsx";
@@ -15,113 +15,33 @@ const MOBILE_TABS = [
 ];
 
 const PAGE_SIZE = 15;
-const SS_KEY = "products_page_state";
-
-const SEASON_KEYWORDS = ["лето", "осень", "зима", "весна", "демисезон"];
-const TYPE_KEYWORDS = [
-  "кроссовк",
-  "кросовк",
-  "кед",
-  "сандал",
-  "босоножк",
-  "туфл",
-  "лодочк",
-  "балетк",
-  "сапог",
-  "угг",
-  "дут",
-  "валенк",
-  "ботинк",
-  "мокасин",
-  "лофер",
-  "слипон",
-  "эспадриль",
-  "шлепанец",
-  "шлеп",
-  "тапк",
-  "сабо",
-  "топсайдер",
-  "пантолет",
-  "казак",
-  "челси",
-  "кросс",
-  "сникерс",
-  "слиппер",
-];
-const GENDER_KEYWORDS = ["жен", "муж", "дет"];
-const COUNTRY_KEYWORDS = [
-  "росси",
-  "рф",
-  "итал",
-  "кита",
-  "герман",
-  "турци",
-  "португал",
-  "испан",
-  "франци",
-  "польш",
-  "чех",
-  "инди",
-  "вьетнам",
-  "бразили",
-  "аргентин",
-  "украин",
-  "белорус",
-  "казах",
-];
-const MATERIAL_KEYWORDS = [
-  "кож",
-  "текстил",
-  "замш",
-  "нубук",
-  "велюр",
-  "лак",
-  "резин",
-  "полиуретан",
-  "термополиуретан",
-  "тпу",
-  "этиленвинилацетат",
-  "эва",
-  "пвх",
-  "нейлон",
-  "полиэстер",
-  "хлоп",
-  "шерст",
-  "войлок",
-  "фетр",
-  "мех",
-  "искусствен",
-  "натуральн",
-];
-
-function normalize(cat) {
-  if (!cat) return "";
-  return cat.toLowerCase().trim();
-}
-
-function classifyCategory(cat) {
-  const n = normalize(cat);
-  for (const kw of SEASON_KEYWORDS) {
-    if (n === kw || n.startsWith(kw)) return "season";
-  }
-  for (const kw of GENDER_KEYWORDS) {
-    if (n.includes(kw)) return "gender";
-  }
-  for (const kw of COUNTRY_KEYWORDS) {
-    if (n.includes(kw)) return "country";
-  }
-  for (const kw of MATERIAL_KEYWORDS) {
-    if (n.includes(kw)) return "material";
-  }
-  for (const kw of TYPE_KEYWORDS) {
-    if (n.includes(kw)) return "type";
-  }
-  return "other";
-}
+const EMPTY_FILTERS = {
+  season: [],
+  type: [],
+  country: [],
+  material: [],
+  other: [],
+};
 
 function displayCategory(cat) {
   if (!cat) return cat;
   return cat.charAt(0).toUpperCase() + cat.slice(1);
+}
+
+function buildProductsQuery({
+  lastId,
+  limit = PAGE_SIZE,
+  discountedOnly,
+  gender,
+  categories,
+}) {
+  const params = new URLSearchParams();
+  params.set("limit", String(limit));
+  if (lastId != null) params.set("last_id", String(lastId));
+  if (discountedOnly) params.set("discounted_only", "true");
+  if (gender) params.set("gender", gender);
+  (categories || []).forEach((cat) => params.append("category", cat));
+  return params.toString();
 }
 
 export default function ProductsPage({
@@ -131,186 +51,137 @@ export default function ProductsPage({
   discountedOnly = false,
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [mobileTab, setMobileTab] = useState("");
-
+  const gender = searchParams.get("gender") || "";
   const selectedCategories = searchParams.getAll("category");
 
+  const [filterOptions, setFilterOptions] = useState(EMPTY_FILTERS);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isFetching, setIsFetching] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-
-  const hasActiveFilters = mobileTab !== "" || selectedCategories.length > 0;
+  const [hasMore, setHasMore] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   const [seasonOpen, setSeasonOpen] = useState(false);
   const [typeOpen, setTypeOpen] = useState(false);
   const [countryOpen, setCountryOpen] = useState(false);
   const [materialOpen, setMaterialOpen] = useState(false);
 
-  // Статические категории
-  const [staticCategories, setStaticCategories] = useState({
-    season: [],
-    type: [],
-    country: [],
-    material: [],
-    other: [],
-  });
+  const filterKey = useMemo(
+    () =>
+      JSON.stringify({
+        gender,
+        categories: selectedCategories,
+        discountedOnly,
+      }),
+    [gender, selectedCategories, discountedOnly],
+  );
 
-  // Загрузка категорий один раз при старте
   useEffect(() => {
     let isMounted = true;
-    async function initCategories() {
+
+    async function loadFilters() {
       try {
-        const response = await fetch(`${API_URL}/products?limit=500`);
+        const response = await fetch(`${API_URL}/products/filters`);
+        if (!response.ok) return;
         const data = await response.json();
-        if (isMounted && Array.isArray(data)) {
-          const allCats = data.flatMap((p) => p.categories || []);
-          const unique = [...new Set(allCats)];
-          const season = [];
-          const type = [];
-          const country = [];
-          const material = [];
-          const other = [];
-          for (const cat of unique) {
-            const group = classifyCategory(cat);
-            if (group === "gender") continue;
-            if (group === "season") season.push(cat);
-            else if (group === "type") type.push(cat);
-            else if (group === "country") country.push(cat);
-            else if (group === "material") material.push(cat);
-            else other.push(cat);
-          }
-          setStaticCategories({
-            season: season.sort((a, b) => a.localeCompare(b)),
-            type: type.sort((a, b) => a.localeCompare(b)),
-            country: country.sort((a, b) => a.localeCompare(b)),
-            material: material.sort((a, b) => a.localeCompare(b)),
-            other: other.sort((a, b) => a.localeCompare(b)),
+        if (isMounted && data && typeof data === "object") {
+          setFilterOptions({
+            season: data.season || [],
+            type: data.type || [],
+            country: data.country || [],
+            material: data.material || [],
+            other: data.other || [],
           });
         }
       } catch (err) {
-        console.error("Ошибка загрузки категорий:", err);
+        console.error("Ошибка загрузки фильтров:", err);
       }
     }
-    initCategories();
+
+    loadFilters();
     return () => {
       isMounted = false;
     };
   }, [API_URL]);
 
-  // Восстановление состояния из sessionStorage
-  const savedState = useMemo(() => {
-    try {
-      const raw = sessionStorage.getItem(SS_KEY);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      if (parsed.discountedOnly !== discountedOnly) return null;
-      return parsed;
-    } catch {
-      return null;
-    }
-  }, [discountedOnly]);
-
-  // ОСНОВНАЯ ЗАГРУЗКА ТОВАРОВ — теперь без зависимости от products.length
   useEffect(() => {
+    let isMounted = true;
+    const controller = new AbortController();
+
     async function loadProducts() {
-      // Первая загрузка (products пуст) — показываем большой лоадер
-      const isInitial = products.length === 0;
-      if (isInitial) {
-        setLoading(true);
-      } else {
-        setIsFetching(true);
-      }
-
+      setLoading(true);
+      setLoadError("");
       try {
-        // Восстановление из sessionStorage только при чистой странице
-        if (savedState && !hasActiveFilters && !discountedOnly) {
-          const ss = savedState;
-          setProducts(ss.products || []);
-          setHasMore(ss.hasMore !== undefined ? ss.hasMore : true);
-          sessionStorage.removeItem(SS_KEY);
-          setLoading(false);
-          setIsFetching(false);
-          return;
+        const qs = buildProductsQuery({
+          gender,
+          categories: selectedCategories,
+          discountedOnly,
+          limit: PAGE_SIZE,
+        });
+        const response = await fetch(`${API_URL}/products?${qs}`, {
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          throw new Error("Не удалось загрузить товары");
         }
-
-        // Если есть активные фильтры или скидка — грузим все 999
-        if (hasActiveFilters || discountedOnly) {
-          const response = await fetch(
-            `${API_URL}/products?limit=999${discountedOnly ? "&discounted_only=true" : ""}`,
-          );
-          const data = await response.json();
-          if (Array.isArray(data)) {
-            setProducts(data);
-          } else {
-            setProducts([]);
-          }
-          setHasMore(false);
-        } else {
-          // Без фильтров — первая страница
-          const response = await fetch(
-            `${API_URL}/products?limit=${PAGE_SIZE}${discountedOnly ? "&discounted_only=true" : ""}`,
-          );
-          const data = await response.json();
-          if (Array.isArray(data)) {
-            setProducts(data);
-            setHasMore(data.length >= PAGE_SIZE);
-          } else {
-            setProducts([]);
-            setHasMore(false);
-          }
-        }
+        const data = await response.json();
+        if (!isMounted) return;
+        setProducts(Array.isArray(data.items) ? data.items : []);
+        setHasMore(Boolean(data.has_more));
       } catch (err) {
+        if (err.name === "AbortError") return;
         console.error("Ошибка загрузки товаров:", err);
-        setProducts([]);
-        setHasMore(false);
+        if (isMounted) {
+          setProducts([]);
+          setHasMore(false);
+          setLoadError("Не удалось загрузить каталог. Попробуйте обновить страницу.");
+        }
       } finally {
-        setLoading(false);
-        setIsFetching(false);
+        if (isMounted) setLoading(false);
       }
     }
 
     loadProducts();
-    // Убрали products.length и savedState из зависимостей — теперь useEffect срабатывает только при изменении фильтров
-  }, [API_URL, hasActiveFilters, discountedOnly]); // ❗️ Убрали savedState и products.length
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [API_URL, filterKey]);
 
-  // Сохраняем состояние для кнопки "назад"
-  const saveState = useCallback(() => {
-    if (hasActiveFilters) return;
-    sessionStorage.setItem(
-      SS_KEY,
-      JSON.stringify({
-        products,
-        hasMore,
-        discountedOnly,
-      }),
-    );
-  }, [products, hasMore, hasActiveFilters, discountedOnly]);
-
-  async function handleLoadMore() {
-    if (loadingMore || !hasMore) return;
+  const handleLoadMore = useCallback(async () => {
+    if (loadingMore || !hasMore || products.length === 0) return;
     setLoadingMore(true);
     try {
-      const lastProduct = products[products.length - 1];
-      const lastId = lastProduct ? lastProduct.id : 0;
-
-      const response = await fetch(
-        `${API_URL}/products?last_id=${lastId}&limit=${PAGE_SIZE}${discountedOnly ? "&discounted_only=true" : ""}`,
-      );
+      const lastId = products[products.length - 1].id;
+      const qs = buildProductsQuery({
+        lastId,
+        gender,
+        categories: selectedCategories,
+        discountedOnly,
+        limit: PAGE_SIZE,
+      });
+      const response = await fetch(`${API_URL}/products?${qs}`);
+      if (!response.ok) return;
       const data = await response.json();
-      if (Array.isArray(data) && data.length > 0) {
-        setProducts((prev) => [...prev, ...data]);
-        setHasMore(data.length >= PAGE_SIZE);
-      } else {
-        setHasMore(false);
+      const items = Array.isArray(data.items) ? data.items : [];
+      if (items.length > 0) {
+        setProducts((prev) => [...prev, ...items]);
       }
+      setHasMore(Boolean(data.has_more));
     } catch (err) {
       console.error("Ошибка загрузки следующих товаров:", err);
     } finally {
       setLoadingMore(false);
     }
-  }
+  }, [
+    API_URL,
+    loadingMore,
+    hasMore,
+    products,
+    gender,
+    selectedCategories,
+    discountedOnly,
+  ]);
 
   useLayoutEffect(() => {
     if (loading) return;
@@ -327,12 +198,6 @@ export default function ProductsPage({
     });
     sessionStorage.removeItem("catalog_scroll");
   }, [loading]);
-
-  useEffect(() => {
-    return () => {
-      saveState();
-    };
-  }, [saveState]);
 
   async function handleDeleteProduct(productId) {
     if (!window.confirm("Вы уверены, что хотите навсегда удалить этот товар?"))
@@ -353,31 +218,17 @@ export default function ProductsPage({
     }
   }
 
-  // Фильтруем по уценке
-  const discountFiltered = useMemo(() => {
-    if (!discountedOnly) return products;
-    return products.filter((p) => (p.discount || 0) > 0);
-  }, [products, discountedOnly]);
-
-  // Финальная фильтрация по полу и категориям
-  const filteredProducts = useMemo(() => {
-    let result = discountFiltered;
-    if (mobileTab) {
-      result = result.filter(
-        (p) =>
-          p.categories &&
-          p.categories.some((c) => normalize(c).includes(mobileTab)),
-      );
-    }
-    if (selectedCategories.length > 0) {
-      result = result.filter(
-        (p) =>
-          p.categories &&
-          p.categories.some((cat) => selectedCategories.includes(cat)),
-      );
-    }
-    return result;
-  }, [discountFiltered, selectedCategories, mobileTab]);
+  const handleGenderToggle = (tabId) => {
+    setSearchParams((prev) => {
+      const newParams = new URLSearchParams(prev);
+      if (gender === tabId) {
+        newParams.delete("gender");
+      } else {
+        newParams.set("gender", tabId);
+      }
+      return newParams;
+    });
+  };
 
   const handleCategoryToggle = (cat) => {
     setSearchParams((prev) => {
@@ -387,8 +238,7 @@ export default function ProductsPage({
       newParams.delete("category");
 
       if (isSelected) {
-        const updated = current.filter((c) => c !== cat);
-        updated.forEach((c) => newParams.append("category", c));
+        current.filter((c) => c !== cat).forEach((c) => newParams.append("category", c));
       } else {
         current.forEach((c) => newParams.append("category", c));
         newParams.append("category", cat);
@@ -397,15 +247,21 @@ export default function ProductsPage({
     });
   };
 
-  const handleClearCategories = () => {
+  const handleClearFilters = () => {
     setSearchParams((prev) => {
       const newParams = new URLSearchParams(prev);
       newParams.delete("category");
+      newParams.delete("gender");
       return newParams;
     });
+    setSeasonOpen(false);
+    setTypeOpen(false);
+    setCountryOpen(false);
+    setMaterialOpen(false);
   };
 
-  // Стили (без изменений)
+  const hasActiveFilters = gender !== "" || selectedCategories.length > 0;
+
   const sidebarTabStyle = (active) => ({
     display: "block",
     width: "100%",
@@ -476,6 +332,104 @@ export default function ProductsPage({
     letterSpacing: "0.01em",
   });
 
+  const renderFilterGroup = (items, open, setOpen, label) => {
+    if (items.length === 0) return null;
+    return (
+      <div style={{ marginBottom: "4px" }}>
+        <button onClick={() => setOpen(!open)} style={sidebarGroupStyle(open)}>
+          <span style={{ marginRight: "6px" }}>{open ? "▾" : "▸"}</span>
+          {label}
+        </button>
+        {open && (
+          <div style={{ marginTop: "2px", marginBottom: "4px" }}>
+            {items.map((cat) => {
+              const isSelected = selectedCategories.includes(cat);
+              return (
+                <button
+                  key={cat}
+                  onClick={() => handleCategoryToggle(cat)}
+                  style={sidebarSubcatStyle(isSelected)}
+                >
+                  {displayCategory(cat)}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderMobileFilterDropdown = (items, open, setOpen, label) => {
+    if (items.length === 0) return null;
+    return (
+      <div style={{ position: "relative" }}>
+        <button
+          onClick={() => setOpen(!open)}
+          style={{
+            padding: "5px 10px",
+            border: "1px solid #e2e8f0",
+            borderRadius: "16px",
+            background: open ? "#eef2ff" : "#fff",
+            color: open ? "#4f46e5" : "#475569",
+            fontWeight: open ? 600 : 400,
+            fontSize: "11px",
+            cursor: "pointer",
+            fontFamily: '"Inter", "SF Pro Text", system-ui, sans-serif',
+            whiteSpace: "nowrap",
+            transition: "all 0.2s",
+          }}
+        >
+          {open ? "▴ " : "▾ "}
+          {label}
+        </button>
+        {open && (
+          <div
+            style={{
+              position: "absolute",
+              top: "100%",
+              left: "0",
+              background: "#fff",
+              border: "1px solid #e2e8f0",
+              borderRadius: "8px",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+              zIndex: 20,
+              minWidth: "140px",
+              padding: "4px 0",
+              maxHeight: "250px",
+              overflowY: "auto",
+            }}
+          >
+            {items.map((cat) => {
+              const isSelected = selectedCategories.includes(cat);
+              return (
+                <button
+                  key={cat}
+                  onClick={() => handleCategoryToggle(cat)}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    padding: "6px 14px",
+                    border: "none",
+                    background: isSelected ? "#eef2ff" : "transparent",
+                    color: isSelected ? "#4f46e5" : "#475569",
+                    fontWeight: isSelected ? 600 : 400,
+                    fontSize: "12px",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    fontFamily: '"Inter", "SF Pro Text", system-ui, sans-serif',
+                  }}
+                >
+                  {displayCategory(cat)}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div
@@ -541,15 +495,14 @@ export default function ProductsPage({
           fontFamily: "system-ui, -apple-system, sans-serif",
         }}
       >
-        {/* МОБИЛЬНЫЕ ТАБЫ */}
         <div className="mobile-tab-bar" style={{ display: "none" }}>
           <div className="main-tabs">
             {MOBILE_TABS.map((tab) => {
-              const isActive = mobileTab === tab.id;
+              const isActive = gender === tab.id;
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setMobileTab(isActive ? "" : tab.id)}
+                  onClick={() => handleGenderToggle(tab.id)}
                   style={{
                     flex: 1,
                     padding: "10px 4px",
@@ -583,268 +536,33 @@ export default function ProductsPage({
               justifyContent: "center",
             }}
           >
-            {staticCategories.country.length > 0 && (
-              <div style={{ position: "relative" }}>
-                <button
-                  onClick={() => setCountryOpen(!countryOpen)}
-                  style={{
-                    padding: "5px 10px",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "16px",
-                    background: countryOpen ? "#eef2ff" : "#fff",
-                    color: countryOpen ? "#4f46e5" : "#475569",
-                    fontWeight: countryOpen ? 600 : 400,
-                    fontSize: "11px",
-                    cursor: "pointer",
-                    fontFamily: '"Inter", "SF Pro Text", system-ui, sans-serif',
-                    whiteSpace: "nowrap",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  {countryOpen ? "▴ " : "▾ "}Страна
-                </button>
-                {countryOpen && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "100%",
-                      left: "0",
-                      background: "#fff",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "8px",
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                      zIndex: 20,
-                      minWidth: "140px",
-                      padding: "4px 0",
-                    }}
-                  >
-                    {staticCategories.country.map((cat) => {
-                      const isSelected = selectedCategories.includes(cat);
-                      return (
-                        <button
-                          key={cat}
-                          onClick={() => handleCategoryToggle(cat)}
-                          style={{
-                            display: "block",
-                            width: "100%",
-                            padding: "6px 14px",
-                            border: "none",
-                            background: isSelected ? "#eef2ff" : "transparent",
-                            color: isSelected ? "#4f46e5" : "#475569",
-                            fontWeight: isSelected ? 600 : 400,
-                            fontSize: "12px",
-                            cursor: "pointer",
-                            textAlign: "left",
-                            fontFamily:
-                              '"Inter", "SF Pro Text", system-ui, sans-serif',
-                          }}
-                        >
-                          {displayCategory(cat)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+            {renderMobileFilterDropdown(
+              filterOptions.country,
+              countryOpen,
+              setCountryOpen,
+              "Страна",
             )}
-            {staticCategories.material.length > 0 && (
-              <div style={{ position: "relative" }}>
-                <button
-                  onClick={() => setMaterialOpen(!materialOpen)}
-                  style={{
-                    padding: "5px 10px",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "16px",
-                    background: materialOpen ? "#eef2ff" : "#fff",
-                    color: materialOpen ? "#4f46e5" : "#475569",
-                    fontWeight: materialOpen ? 600 : 400,
-                    fontSize: "11px",
-                    cursor: "pointer",
-                    fontFamily: '"Inter", "SF Pro Text", system-ui, sans-serif',
-                    whiteSpace: "nowrap",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  {materialOpen ? "▴ " : "▾ "}Материал
-                </button>
-                {materialOpen && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "100%",
-                      left: "0",
-                      background: "#fff",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "8px",
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                      zIndex: 20,
-                      minWidth: "140px",
-                      padding: "4px 0",
-                    }}
-                  >
-                    {staticCategories.material.map((cat) => {
-                      const isSelected = selectedCategories.includes(cat);
-                      return (
-                        <button
-                          key={cat}
-                          onClick={() => handleCategoryToggle(cat)}
-                          style={{
-                            display: "block",
-                            width: "100%",
-                            padding: "6px 14px",
-                            border: "none",
-                            background: isSelected ? "#eef2ff" : "transparent",
-                            color: isSelected ? "#4f46e5" : "#475569",
-                            fontWeight: isSelected ? 600 : 400,
-                            fontSize: "12px",
-                            cursor: "pointer",
-                            textAlign: "left",
-                            fontFamily:
-                              '"Inter", "SF Pro Text", system-ui, sans-serif',
-                          }}
-                        >
-                          {displayCategory(cat)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+            {renderMobileFilterDropdown(
+              filterOptions.material,
+              materialOpen,
+              setMaterialOpen,
+              "Материал",
             )}
-            {staticCategories.season.length > 0 && (
-              <div style={{ position: "relative" }}>
-                <button
-                  onClick={() => setSeasonOpen(!seasonOpen)}
-                  style={{
-                    padding: "5px 10px",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "16px",
-                    background: seasonOpen ? "#eef2ff" : "#fff",
-                    color: seasonOpen ? "#4f46e5" : "#475569",
-                    fontWeight: seasonOpen ? 600 : 400,
-                    fontSize: "11px",
-                    cursor: "pointer",
-                    fontFamily: '"Inter", "SF Pro Text", system-ui, sans-serif',
-                    whiteSpace: "nowrap",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  {seasonOpen ? "▴ " : "▾ "}Сезон
-                </button>
-                {seasonOpen && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "100%",
-                      left: "0",
-                      background: "#fff",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "8px",
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                      zIndex: 20,
-                      minWidth: "140px",
-                      padding: "4px 0",
-                    }}
-                  >
-                    {staticCategories.season.map((cat) => {
-                      const isSelected = selectedCategories.includes(cat);
-                      return (
-                        <button
-                          key={cat}
-                          onClick={() => handleCategoryToggle(cat)}
-                          style={{
-                            display: "block",
-                            width: "100%",
-                            padding: "6px 14px",
-                            border: "none",
-                            background: isSelected ? "#eef2ff" : "transparent",
-                            color: isSelected ? "#4f46e5" : "#475569",
-                            fontWeight: isSelected ? 600 : 400,
-                            fontSize: "12px",
-                            cursor: "pointer",
-                            textAlign: "left",
-                            fontFamily:
-                              '"Inter", "SF Pro Text", system-ui, sans-serif',
-                          }}
-                        >
-                          {displayCategory(cat)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+            {renderMobileFilterDropdown(
+              filterOptions.season,
+              seasonOpen,
+              setSeasonOpen,
+              "Сезон",
             )}
-            {staticCategories.type.length > 0 && (
-              <div style={{ position: "relative" }}>
-                <button
-                  onClick={() => setTypeOpen(!typeOpen)}
-                  style={{
-                    padding: "5px 10px",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "16px",
-                    background: typeOpen ? "#eef2ff" : "#fff",
-                    color: typeOpen ? "#4f46e5" : "#475569",
-                    fontWeight: typeOpen ? 600 : 400,
-                    fontSize: "11px",
-                    cursor: "pointer",
-                    fontFamily: '"Inter", "SF Pro Text", system-ui, sans-serif',
-                    whiteSpace: "nowrap",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  {typeOpen ? "▴ " : "▾ "}Вид
-                </button>
-                {typeOpen && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "100%",
-                      left: "0",
-                      background: "#fff",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "8px",
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                      zIndex: 20,
-                      minWidth: "140px",
-                      padding: "4px 0",
-                      maxHeight: "250px",
-                      overflowY: "auto",
-                    }}
-                  >
-                    {staticCategories.type.map((cat) => {
-                      const isSelected = selectedCategories.includes(cat);
-                      return (
-                        <button
-                          key={cat}
-                          onClick={() => handleCategoryToggle(cat)}
-                          style={{
-                            display: "block",
-                            width: "100%",
-                            padding: "6px 14px",
-                            border: "none",
-                            background: isSelected ? "#eef2ff" : "transparent",
-                            color: isSelected ? "#4f46e5" : "#475569",
-                            fontWeight: isSelected ? 600 : 400,
-                            fontSize: "12px",
-                            cursor: "pointer",
-                            textAlign: "left",
-                            fontFamily:
-                              '"Inter", "SF Pro Text", system-ui, sans-serif',
-                          }}
-                        >
-                          {displayCategory(cat)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+            {renderMobileFilterDropdown(
+              filterOptions.type,
+              typeOpen,
+              setTypeOpen,
+              "Вид",
             )}
           </div>
         </div>
 
-        {/* ДЕСКТОП-САЙДБАР */}
         <aside
           className="desktop-sidebar"
           style={{
@@ -875,157 +593,53 @@ export default function ProductsPage({
             Категории
           </div>
           {MOBILE_TABS.map((tab) => {
-            const isActive = mobileTab === tab.id;
+            const isActive = gender === tab.id;
             return (
               <button
                 key={tab.id}
-                onClick={() => setMobileTab(isActive ? "" : tab.id)}
+                onClick={() => handleGenderToggle(tab.id)}
                 style={sidebarTabStyle(isActive)}
               >
                 {tab.label}
               </button>
             );
           })}
-          {(staticCategories.season.length > 0 ||
-            staticCategories.type.length > 0 ||
-            staticCategories.country.length > 0 ||
-            staticCategories.material.length > 0 ||
-            staticCategories.other.length > 0) && (
+          {(filterOptions.season.length > 0 ||
+            filterOptions.type.length > 0 ||
+            filterOptions.country.length > 0 ||
+            filterOptions.material.length > 0 ||
+            filterOptions.other.length > 0) && (
             <div
               style={{ margin: "12px 0 8px", borderTop: "1px solid #e2e8f0" }}
             />
           )}
 
-          {staticCategories.country.length > 0 && (
-            <div style={{ marginBottom: "4px" }}>
-              <button
-                onClick={() => setCountryOpen(!countryOpen)}
-                style={sidebarGroupStyle(countryOpen)}
-              >
-                <span style={{ marginRight: "6px" }}>
-                  {countryOpen ? "▾" : "▸"}Страна
-                </span>
-              </button>
-              {countryOpen && (
-                <div style={{ marginTop: "2px", marginBottom: "4px" }}>
-                  {staticCategories.country.map((cat) => {
-                    const isSelected = selectedCategories.includes(cat);
-                    return (
-                      <button
-                        key={cat}
-                        onClick={() => handleCategoryToggle(cat)}
-                        style={sidebarSubcatStyle(isSelected)}
-                      >
-                        {displayCategory(cat)}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+          {renderFilterGroup(
+            filterOptions.country,
+            countryOpen,
+            setCountryOpen,
+            "Страна",
           )}
-
-          {staticCategories.material.length > 0 && (
-            <div style={{ marginBottom: "4px" }}>
-              <button
-                onClick={() => setMaterialOpen(!materialOpen)}
-                style={sidebarGroupStyle(materialOpen)}
-              >
-                <span style={{ marginRight: "6px" }}>
-                  {materialOpen ? "▾" : "▸"}Материал
-                </span>
-              </button>
-              {materialOpen && (
-                <div style={{ marginTop: "2px", marginBottom: "4px" }}>
-                  {staticCategories.material.map((cat) => {
-                    const isSelected = selectedCategories.includes(cat);
-                    return (
-                      <button
-                        key={cat}
-                        onClick={() => handleCategoryToggle(cat)}
-                        style={sidebarSubcatStyle(isSelected)}
-                      >
-                        {displayCategory(cat)}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+          {renderFilterGroup(
+            filterOptions.material,
+            materialOpen,
+            setMaterialOpen,
+            "Материал",
           )}
-
-          {staticCategories.season.length > 0 && (
-            <div style={{ marginBottom: "4px" }}>
-              <button
-                onClick={() => setSeasonOpen(!seasonOpen)}
-                style={sidebarGroupStyle(seasonOpen)}
-              >
-                <span style={{ marginRight: "6px" }}>
-                  {seasonOpen ? "▾" : "▸"}Сезон
-                </span>
-              </button>
-              {seasonOpen && (
-                <div style={{ marginTop: "2px", marginBottom: "4px" }}>
-                  {staticCategories.season.map((cat) => {
-                    const isSelected = selectedCategories.includes(cat);
-                    return (
-                      <button
-                        key={cat}
-                        onClick={() => handleCategoryToggle(cat)}
-                        style={sidebarSubcatStyle(isSelected)}
-                      >
-                        {displayCategory(cat)}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+          {renderFilterGroup(
+            filterOptions.season,
+            seasonOpen,
+            setSeasonOpen,
+            "Сезон",
           )}
+          {renderFilterGroup(filterOptions.type, typeOpen, setTypeOpen, "Вид")}
 
-          {staticCategories.type.length > 0 && (
-            <div style={{ marginBottom: "4px" }}>
-              <button
-                onClick={() => setTypeOpen(!typeOpen)}
-                style={sidebarGroupStyle(typeOpen)}
-              >
-                <span style={{ marginRight: "6px" }}>
-                  {typeOpen ? "▾" : "▸"}Вид
-                </span>
-              </button>
-              {typeOpen && (
-                <div style={{ marginTop: "2px", marginBottom: "4px" }}>
-                  {staticCategories.type.map((cat) => {
-                    const isSelected = selectedCategories.includes(cat);
-                    return (
-                      <button
-                        key={cat}
-                        onClick={() => handleCategoryToggle(cat)}
-                        style={sidebarSubcatStyle(isSelected)}
-                      >
-                        {displayCategory(cat)}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {staticCategories.other.length > 0 && (
+          {filterOptions.other.length > 0 && (
             <>
-              {staticCategories.season.length > 0 ||
-              staticCategories.type.length > 0 ||
-              staticCategories.country.length > 0 ||
-              staticCategories.material.length > 0 ? (
-                <div
-                  style={{
-                    margin: "8px 0 8px",
-                    borderTop: "1px solid #e2e8f0",
-                  }}
-                />
-              ) : null}
-              {staticCategories.other.map((cat) => {
+              <div
+                style={{ margin: "8px 0 8px", borderTop: "1px solid #e2e8f0" }}
+              />
+              {filterOptions.other.map((cat) => {
                 const isSelected = selectedCategories.includes(cat);
                 return (
                   <button
@@ -1040,16 +654,9 @@ export default function ProductsPage({
             </>
           )}
 
-          {(mobileTab || selectedCategories.length > 0) && (
+          {hasActiveFilters && (
             <button
-              onClick={() => {
-                setMobileTab("");
-                handleClearCategories();
-                setSeasonOpen(false);
-                setTypeOpen(false);
-                setCountryOpen(false);
-                setMaterialOpen(false);
-              }}
+              onClick={handleClearFilters}
               style={{
                 display: "block",
                 width: "100%",
@@ -1072,7 +679,6 @@ export default function ProductsPage({
           )}
         </aside>
 
-        {/* ОСНОВНОЙ КОНТЕНТ */}
         <main
           className="mainContent"
           style={{
@@ -1080,10 +686,20 @@ export default function ProductsPage({
             padding: "24px",
             boxSizing: "border-box",
             minWidth: 0,
-            position: "relative",
           }}
         >
-          {filteredProducts.length === 0 ? (
+          {loadError ? (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "40px 0",
+                fontSize: "18px",
+                color: "#ef4444",
+              }}
+            >
+              {loadError}
+            </div>
+          ) : products.length === 0 ? (
             <div
               style={{
                 textAlign: "center",
@@ -1103,12 +719,9 @@ export default function ProductsPage({
                 style={{
                   display: "grid",
                   marginBottom: "40px",
-                  opacity: isFetching ? 0.6 : 1,
-                  transition: "opacity 0.2s ease",
-                  pointerEvents: isFetching ? "none" : "auto",
                 }}
               >
-                {filteredProducts.map((p) => (
+                {products.map((p) => (
                   <ProductCard
                     key={p.id}
                     product={p}
@@ -1118,41 +731,7 @@ export default function ProductsPage({
                   />
                 ))}
               </div>
-              {isFetching && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    background: "rgba(255,255,255,0.85)",
-                    padding: "16px 32px",
-                    borderRadius: "12px",
-                    boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
-                    fontSize: "16px",
-                    fontWeight: 500,
-                    color: "#4f46e5",
-                    zIndex: 5,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                  }}
-                >
-                  <span
-                    style={{
-                      display: "inline-block",
-                      width: "20px",
-                      height: "20px",
-                      border: "3px solid #e2e8f0",
-                      borderTop: "3px solid #4f46e5",
-                      borderRadius: "50%",
-                      animation: "spin 0.8s linear infinite",
-                    }}
-                  />
-                  Обновление...
-                </div>
-              )}
-              {!hasActiveFilters && hasMore && (
+              {hasMore && (
                 <div style={{ textAlign: "center", marginBottom: "40px" }}>
                   <button
                     onClick={handleLoadMore}
@@ -1171,18 +750,6 @@ export default function ProductsPage({
                       transition: "all 0.2s",
                       opacity: loadingMore ? 0.6 : 1,
                     }}
-                    onMouseEnter={(e) => {
-                      if (!loadingMore) {
-                        e.currentTarget.style.background = "#4f46e5";
-                        e.currentTarget.style.color = "#fff";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!loadingMore) {
-                        e.currentTarget.style.background = "#fff";
-                        e.currentTarget.style.color = "#4f46e5";
-                      }
-                    }}
                   >
                     {loadingMore ? "Загрузка..." : "Показать ещё"}
                   </button>
@@ -1192,12 +759,6 @@ export default function ProductsPage({
           )}
         </main>
       </div>
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </>
   );
 }

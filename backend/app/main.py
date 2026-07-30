@@ -25,6 +25,7 @@ from app.domain.usecases.users.register_use_cases import RegisterUserUseCase
 from app.domain.usecases.users.login_use_case import LoginUserUseCase
 from app.domain.usecases.users.get_profile_use_case import GetProfileUseCase
 from app.domain.usecases.product.get_products_use_case import GetProductsUseCase
+from app.domain.usecases.product.get_product_filters_use_case import GetProductFiltersUseCase
 from app.domain.usecases.product.add_product_use_case import AddProductUseCase
 from app.domain.usecases.cart.add_to_cart_use_case import AddToCartUseCase
 from app.domain.usecases.cart.get_cart_use_case import GetCartUseCase
@@ -111,6 +112,7 @@ register_use_case = RegisterUserUseCase(user_repo=user_repository, hasher=hasher
 login_use_case = LoginUserUseCase(user_repo=user_repository, hasher=hasher, token_provider=token_provider)
 get_profile_use_case = GetProfileUseCase(user_repo=user_repository)
 get_products_use_case = GetProductsUseCase(product_repo=product_repository)
+get_product_filters_use_case = GetProductFiltersUseCase(product_repo=product_repository)
 add_product_use_case = AddProductUseCase(product_repo=product_repository)
 get_product_by_id_use_case = GetProductByIdUseCase(product_repo=product_repository)
 delete_product_use_case = DeleteProductUseCase(product_repo=product_repository)
@@ -131,6 +133,7 @@ user_router = create_user_router(
     login_use_case=login_use_case,
     get_profile_use_case=get_profile_use_case,
     get_products_use_case=get_products_use_case,
+    get_product_filters_use_case=get_product_filters_use_case,
     add_product_use_case=add_product_use_case,
     delete_product_use_case=delete_product_use_case,
     update_product_use_case=update_product_use_case,

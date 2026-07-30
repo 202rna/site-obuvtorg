@@ -138,77 +138,90 @@ class PostgresProductRepository(ProductRepositoryPort):
                 (product_id, category_id),
             )
 
-    async def get_all(self, last_id: int | None, limit: int, discounted_only: bool = False) -> List[dict]:
+    async def get_all(
+        self,
+        last_id: int | None,
+        limit: int,
+        discounted_only: bool = False,
+        gender: str | None = None,
+        categories: list[str] | None = None,
+    ) -> List[dict]:
+        conditions = ["TRUE"]
+        params: list = []
+
+        if discounted_only:
+            conditions.append("p.discount > 0")
+
+        if last_id is not None:
+            conditions.append("p.id < %s")
+            params.append(last_id)
+
+        if gender:
+            conditions.append(
+                """
+                EXISTS (
+                    SELECT 1
+                    FROM product_categories pc_g
+                    JOIN categories c_g ON c_g.id = pc_g.category_id
+                    WHERE pc_g.product_id = p.id
+                      AND LOWER(c_g.name) LIKE %s
+                )
+                """
+            )
+            params.append(f"%{gender.lower()}%")
+
+        if categories:
+            conditions.append(
+                """
+                EXISTS (
+                    SELECT 1
+                    FROM product_categories pc_f
+                    JOIN categories c_f ON c_f.id = pc_f.category_id
+                    WHERE pc_f.product_id = p.id
+                      AND c_f.name = ANY(%s)
+                )
+                """
+            )
+            params.append(categories)
+
+        where_clause = " AND ".join(conditions)
+        params.append(limit)
+
+        query = f"""
+            SELECT p.id, p.title, p.price, p.description, p.image_url, p.image_urls,
+                   p.full_description, p.discount, p.sizes,
+                   COALESCE(
+                       array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL),
+                       '{{}}'
+                   ) AS categories
+            FROM products p
+            LEFT JOIN product_categories pc ON pc.product_id = p.id
+            LEFT JOIN categories c ON c.id = pc.category_id
+            WHERE {where_clause}
+            GROUP BY p.id
+            ORDER BY p.id DESC
+            LIMIT %s
+        """
+
         async with self.pool.connection() as conn:
             async with conn.cursor() as cur:
-                if last_id is None:
-                    if discounted_only:
-                        await cur.execute(
-                            """
-                            SELECT p.id, p.title, p.price, p.description, p.image_url, p.image_urls,
-                                   p.full_description, p.discount, p.sizes,
-                                   COALESCE(array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL), '{}') AS categories
-                            FROM products p
-                            LEFT JOIN product_categories pc ON pc.product_id = p.id
-                            LEFT JOIN categories c ON c.id = pc.category_id
-                            WHERE p.discount > 0
-                            GROUP BY p.id
-                            ORDER BY p.id DESC
-                            LIMIT %s
-                            """,
-                            (limit,)
-                        )
-                    else:
-                        await cur.execute(
-                            """
-                            SELECT p.id, p.title, p.price, p.description, p.image_url, p.image_urls,
-                                   p.full_description, p.discount, p.sizes,
-                                   COALESCE(array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL), '{}') AS categories
-                            FROM products p
-                            LEFT JOIN product_categories pc ON pc.product_id = p.id
-                            LEFT JOIN categories c ON c.id = pc.category_id
-                            GROUP BY p.id
-                            ORDER BY p.id DESC
-                            LIMIT %s
-                            """,
-                            (limit,)
-                        )
-                else:
-                    if discounted_only:
-                        await cur.execute(
-                            """
-                            SELECT p.id, p.title, p.price, p.description, p.image_url, p.image_urls,
-                                   p.full_description, p.discount, p.sizes,
-                                   COALESCE(array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL), '{}') AS categories
-                            FROM products p
-                            LEFT JOIN product_categories pc ON pc.product_id = p.id
-                            LEFT JOIN categories c ON c.id = pc.category_id
-                            WHERE p.id < %s AND p.discount > 0
-                            GROUP BY p.id
-                            ORDER BY p.id DESC
-                            LIMIT %s
-                            """,
-                            (last_id, limit)
-                        )
-                    else:
-                        await cur.execute(
-                            """
-                            SELECT p.id, p.title, p.price, p.description, p.image_url, p.image_urls,
-                                   p.full_description, p.discount, p.sizes,
-                                   COALESCE(array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL), '{}') AS categories
-                            FROM products p
-                            LEFT JOIN product_categories pc ON pc.product_id = p.id
-                            LEFT JOIN categories c ON c.id = pc.category_id
-                            WHERE p.id < %s
-                            GROUP BY p.id
-                            ORDER BY p.id DESC
-                            LIMIT %s
-                            """,
-                            (last_id, limit)
-                        )
-                
+                await cur.execute(query, params)
                 rows = await cur.fetchall()
                 return [self._row_to_product(row) for row in rows]
+
+    async def get_all_category_names(self) -> list[str]:
+        async with self.pool.connection() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    """
+                    SELECT DISTINCT name
+                    FROM categories
+                    WHERE name IS NOT NULL AND TRIM(name) <> ''
+                    ORDER BY name
+                    """
+                )
+                rows = await cur.fetchall()
+                return [row[0] for row in rows]
 
     async def save(
         self,

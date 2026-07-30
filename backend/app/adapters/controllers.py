@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File, Form, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
@@ -18,6 +18,7 @@ from app.domain.usecases.users.login_use_case import LoginUserUseCase
 from app.domain.usecases.users.get_profile_use_case import GetProfileUseCase
 
 from app.domain.usecases.product.get_products_use_case import GetProductsUseCase  
+from app.domain.usecases.product.get_product_filters_use_case import GetProductFiltersUseCase
 from app.domain.usecases.product.add_product_use_case import AddProductUseCase
 from app.domain.usecases.product.delete_product_use_case import DeleteProductUseCase
 from app.domain.usecases.product.get_product_by_id_use_case import GetProductByIdUseCase
@@ -100,6 +101,7 @@ def create_user_router(
     login_use_case: LoginUserUseCase,
     get_profile_use_case: GetProfileUseCase,
     get_products_use_case: GetProductsUseCase,
+    get_product_filters_use_case: GetProductFiltersUseCase,
     add_product_use_case: AddProductUseCase,
     delete_product_use_case: DeleteProductUseCase,
     update_product_use_case: UpdateProductUseCase,
@@ -179,25 +181,41 @@ def create_user_router(
             "message": "Доступ разрешен. Это ваш закрытый профиль."
         }
 
+    @router.get("/products/filters", status_code=status.HTTP_200_OK)
+    async def get_product_filters():
+        """Доступные фильтры каталога (сезон, вид, страна, материал)."""
+        try:
+            return await get_product_filters_use_case.execute()
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Ошибка загрузки фильтров",
+            )
+
     @router.get("/products", status_code=status.HTTP_200_OK)
     async def get_products(
         last_id: int | None = None,
-        limit: int = 30,
+        limit: int = 15,
         discounted_only: bool = False,
+        gender: str | None = None,
+        category: list[str] = Query(default=[]),
     ):
-        """Получение списка продуктов.
+        """Получение списка продуктов с пагинацией и фильтрацией.
 
         Args:
             last_id: курсор пагинации.
-            limit: размер страницы.
-            discounted_only: если True — только товары со скидкой (уценка),
-                иначе — обычный каталог без уценённых.
+            limit: размер страницы (макс. 50).
+            discounted_only: только товары со скидкой.
+            gender: фильтр по полу (жен / муж / дет).
+            category: фильтр по категориям (можно передать несколько).
         """
         try:
             return await get_products_use_case.execute(
                 last_id=last_id,
                 limit=limit,
                 discounted_only=discounted_only,
+                gender=gender,
+                categories=category,
             )
         except Exception:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ошибка загрузки товаров")

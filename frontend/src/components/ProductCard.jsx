@@ -1,9 +1,9 @@
-import { useRef, useState, useCallback } from "react";
+import { memo, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { getFinalPrice, formatPrice } from "../utils/price";
 import styles from "./ProductCard.module.css";
 
-export default function ProductCard({
+export default memo(function ProductCard({
   product,
   userRole,
   token,
@@ -128,4 +128,4 @@ export default function ProductCard({
       </div>
     </div>
   );
-}
+});

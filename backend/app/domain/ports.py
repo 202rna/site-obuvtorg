@@ -58,8 +58,20 @@ class MissingType:
 class ProductRepositoryPort(ABC):
     """Интерфейс для управления товарами"""
     @abstractmethod
-    async def get_all(self, last_id: int | None, limit: int, discounted_only: bool = False) -> list:
-        """Получение товаров по курсору. discounted_only=True — только с discount > 0."""
+    async def get_all(
+        self,
+        last_id: int | None,
+        limit: int,
+        discounted_only: bool = False,
+        gender: str | None = None,
+        categories: list[str] | None = None,
+    ) -> list:
+        """Получение товаров по курсору с опциональной фильтрацией."""
+        pass
+
+    @abstractmethod
+    async def get_all_category_names(self) -> list[str]:
+        """Все уникальные названия категорий для фильтров каталога."""
         pass
 
     @abstractmethod
