@@ -45,7 +45,7 @@ export default memo(function ProductCard({
         setImageIndex(newIndex);
       }
     },
-    [images.length, imageIndex]
+    [images.length, imageIndex],
   );
 
   const handleMouseEnter = useCallback(() => {
@@ -59,15 +59,17 @@ export default memo(function ProductCard({
   }, []);
 
   const handleCardClick = () => {
-    // Сохраняем позицию скролла каталога перед переходом на товар
+    // Сохраняем позицию прокрутки каталога
     const mainContent = document.querySelector(".mainContent");
     if (mainContent) {
-      sessionStorage.setItem("catalog_scroll", mainContent.scrollTop);
+      sessionStorage.setItem("catalog_scroll", String(mainContent.scrollTop));
     }
-    // Вызываем колбэк для сохранения состояния товаров перед уходом
+
+    // Сохраняем состояние каталога (если есть такой колбэк)
     if (onProductClick) {
       onProductClick();
     }
+
     navigate(`/products/${product.id}`);
   };
 

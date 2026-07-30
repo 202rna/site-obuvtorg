@@ -65,7 +65,11 @@ export default function ProductsPage({
   const [typeOpen, setTypeOpen] = useState(false);
   const [countryOpen, setCountryOpen] = useState(false);
   const [materialOpen, setMaterialOpen] = useState(false);
+  const saveCatalogState = useCallback(() => {
+    sessionStorage.setItem("catalog_products", JSON.stringify(products));
 
+    sessionStorage.setItem("catalog_hasMore", JSON.stringify(hasMore));
+  }, [products, hasMore]);
   const filterKey = useMemo(
     () =>
       JSON.stringify({
@@ -109,6 +113,15 @@ export default function ProductsPage({
     const controller = new AbortController();
 
     async function loadProducts() {
+      const savedProducts = sessionStorage.getItem("catalog_products");
+      const savedHasMore = sessionStorage.getItem("catalog_hasMore");
+
+      if (savedProducts) {
+        setProducts(JSON.parse(savedProducts));
+        setHasMore(JSON.parse(savedHasMore || "false"));
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       setLoadError("");
       try {
@@ -126,15 +139,26 @@ export default function ProductsPage({
         }
         const data = await response.json();
         if (!isMounted) return;
-        setProducts(Array.isArray(data.items) ? data.items : []);
+        const items = Array.isArray(data.items) ? data.items : [];
+
+        setProducts(items);
         setHasMore(Boolean(data.has_more));
+
+        sessionStorage.setItem("catalog_products", JSON.stringify(items));
+
+        sessionStorage.setItem(
+          "catalog_hasMore",
+          JSON.stringify(Boolean(data.has_more)),
+        );
       } catch (err) {
         if (err.name === "AbortError") return;
         console.error("Ошибка загрузки товаров:", err);
         if (isMounted) {
           setProducts([]);
           setHasMore(false);
-          setLoadError("Не удалось загрузить каталог. Попробуйте обновить страницу.");
+          setLoadError(
+            "Не удалось загрузить каталог. Попробуйте обновить страницу.",
+          );
         }
       } finally {
         if (isMounted) setLoading(false);
@@ -165,8 +189,25 @@ export default function ProductsPage({
       const data = await response.json();
       const items = Array.isArray(data.items) ? data.items : [];
       if (items.length > 0) {
-        setProducts((prev) => [...prev, ...items]);
+        setProducts((prev) => {
+          const updated = [...prev, ...items];
+
+          sessionStorage.setItem("catalog_products", JSON.stringify(updated));
+
+          sessionStorage.setItem(
+            "catalog_hasMore",
+            JSON.stringify(Boolean(data.has_more)),
+          );
+
+          return updated;
+        });
+      } else {
+        sessionStorage.setItem(
+          "catalog_hasMore",
+          JSON.stringify(Boolean(data.has_more)),
+        );
       }
+
       setHasMore(Boolean(data.has_more));
     } catch (err) {
       console.error("Ошибка загрузки следующих товаров:", err);
@@ -219,6 +260,9 @@ export default function ProductsPage({
   }
 
   const handleGenderToggle = (tabId) => {
+    sessionStorage.removeItem("catalog_products");
+    sessionStorage.removeItem("catalog_hasMore");
+    sessionStorage.removeItem("catalog_scroll");
     setSearchParams((prev) => {
       const newParams = new URLSearchParams(prev);
       if (gender === tabId) {
@@ -231,6 +275,9 @@ export default function ProductsPage({
   };
 
   const handleCategoryToggle = (cat) => {
+    sessionStorage.removeItem("catalog_products");
+    sessionStorage.removeItem("catalog_hasMore");
+    sessionStorage.removeItem("catalog_scroll");
     setSearchParams((prev) => {
       const newParams = new URLSearchParams(prev);
       const current = newParams.getAll("category");
@@ -238,7 +285,9 @@ export default function ProductsPage({
       newParams.delete("category");
 
       if (isSelected) {
-        current.filter((c) => c !== cat).forEach((c) => newParams.append("category", c));
+        current
+          .filter((c) => c !== cat)
+          .forEach((c) => newParams.append("category", c));
       } else {
         current.forEach((c) => newParams.append("category", c));
         newParams.append("category", cat);
@@ -248,6 +297,9 @@ export default function ProductsPage({
   };
 
   const handleClearFilters = () => {
+    sessionStorage.removeItem("catalog_products");
+    sessionStorage.removeItem("catalog_hasMore");
+    sessionStorage.removeItem("catalog_scroll");
     setSearchParams((prev) => {
       const newParams = new URLSearchParams(prev);
       newParams.delete("category");
@@ -728,6 +780,7 @@ export default function ProductsPage({
                     token={token}
                     userRole={userRole}
                     onDelete={handleDeleteProduct}
+                    onProductClick={saveCatalogState}
                   />
                 ))}
               </div>
