@@ -157,22 +157,22 @@ export default function ProductsPage({
     other: [],
   });
 
+  // Загрузка категорий один раз при старте
   useEffect(() => {
     let isMounted = true;
     async function initCategories() {
       try {
-        // Вызываем наш новый, легковесный эндпоинт
-        const response = await fetch(`${API_URL}/categories`);
+        const response = await fetch(`${API_URL}/products?limit=500`);
         const data = await response.json();
-
         if (isMounted && Array.isArray(data)) {
+          const allCats = data.flatMap((p) => p.categories || []);
+          const unique = [...new Set(allCats)];
           const season = [];
           const type = [];
           const country = [];
           const material = [];
           const other = [];
-
-          for (const cat of data) {
+          for (const cat of unique) {
             const group = classifyCategory(cat);
             if (group === "gender") continue;
             if (group === "season") season.push(cat);
@@ -181,7 +181,6 @@ export default function ProductsPage({
             else if (group === "material") material.push(cat);
             else other.push(cat);
           }
-
           setStaticCategories({
             season: season.sort((a, b) => a.localeCompare(b)),
             type: type.sort((a, b) => a.localeCompare(b)),
@@ -200,6 +199,7 @@ export default function ProductsPage({
     };
   }, [API_URL]);
 
+  // Восстановление состояния из sessionStorage
   const savedState = useMemo(() => {
     try {
       const raw = sessionStorage.getItem(SS_KEY);
@@ -212,9 +212,10 @@ export default function ProductsPage({
     }
   }, [discountedOnly]);
 
-  // ОСНОВНАЯ ЗАГРУЗКА ТОВАРОВ — с поддержкой серверной фильтрации
+  // ОСНОВНАЯ ЗАГРУЗКА ТОВАРОВ — теперь без зависимости от products.length
   useEffect(() => {
     async function loadProducts() {
+      // Первая загрузка (products пуст) — показываем большой лоадер
       const isInitial = products.length === 0;
       if (isInitial) {
         setLoading(true);
@@ -223,6 +224,7 @@ export default function ProductsPage({
       }
 
       try {
+        // Восстановление из sessionStorage только при чистой странице
         if (savedState && !hasActiveFilters && !discountedOnly) {
           const ss = savedState;
           setProducts(ss.products || []);
@@ -233,56 +235,45 @@ export default function ProductsPage({
           return;
         }
 
-        const tabMapping = {
-          жен: "Женщинам", // 👈 Напишите здесь точное имя категории из вашей БД (например "Женщинам" или "женщины")
-          муж: "Мужчинам", // 👈 Напишите здесь точное имя категории из вашей БД (например "Мужчинам" или "мужчины")
-          дет: "Для детей", // 👈 Напишите здесь точное имя категории из вашей БД (например "Для детей" или "дети")
-        };
-
-        // 2. Собираем ВСЕ активные фильтры вместе, чтобы они работали ОДНОВРЕМЕННО
-        let targetCategories = [];
-
-        // Если выбран верхний таб (пол) — переводим его и добавляем в массив запроса
-        if (mobileTab && tabMapping[mobileTab]) {
-          targetCategories.push(tabMapping[mobileTab]);
-        }
-
-        // Если выбраны боковые фильтры (страна, материал и т.д.) — добавляем их туда же
-        if (selectedCategories && selectedCategories.length > 0) {
-          targetCategories = [...targetCategories, ...selectedCategories];
-        }
-
-        // Строим чистый URL. Всегда запрашиваем строго PAGE_SIZE (15) элементов!
-        let url = `${API_URL}/products?limit=${PAGE_SIZE}`;
-        if (discountedOnly) url += "&discounted_only=true";
-        for (const cat of targetCategories) {
-          url += `&category=${encodeURIComponent(cat)}`;
-        }
-
-        const response = await fetch(url);
-        const data = await response.json();
-
-        if (Array.isArray(data)) {
-          setProducts(data);
-          // Если сервер вернул меньше 15 товаров, значит дальше ничего нет
-          setHasMore(data.length >= PAGE_SIZE);
-        } else {
-          setProducts([]);
+        // Если есть активные фильтры или скидка — грузим все 999
+        if (hasActiveFilters || discountedOnly) {
+          const response = await fetch(
+            `${API_URL}/products?limit=999${discountedOnly ? "&discounted_only=true" : ""}`,
+          );
+          const data = await response.json();
+          if (Array.isArray(data)) {
+            setProducts(data);
+          } else {
+            setProducts([]);
+          }
           setHasMore(false);
+        } else {
+          // Без фильтров — первая страница
+          const response = await fetch(
+            `${API_URL}/products?limit=${PAGE_SIZE}${discountedOnly ? "&discounted_only=true" : ""}`,
+          );
+          const data = await response.json();
+          if (Array.isArray(data)) {
+            setProducts(data);
+            setHasMore(data.length >= PAGE_SIZE);
+          } else {
+            setProducts([]);
+            setHasMore(false);
+          }
         }
       } catch (err) {
         console.error("Ошибка загрузки товаров:", err);
         setProducts([]);
         setHasMore(false);
-      }
-      Transformer: {
+      } finally {
         setLoading(false);
         setIsFetching(false);
       }
     }
 
     loadProducts();
-  }, [API_URL, mobileTab, searchParams, discountedOnly]);
+    // Убрали products.length и savedState из зависимостей — теперь useEffect срабатывает только при изменении фильтров
+  }, [API_URL, hasActiveFilters, discountedOnly]); // ❗️ Убрали savedState и products.length
 
   // Сохраняем состояние для кнопки "назад"
   const saveState = useCallback(() => {
@@ -304,33 +295,13 @@ export default function ProductsPage({
       const lastProduct = products[products.length - 1];
       const lastId = lastProduct ? lastProduct.id : 0;
 
-      const tabMapping = {
-        жен: "Женщинам",
-        муж: "Мужчинам",
-        дет: "Для детей",
-      };
-
-      let url = `${API_URL}/products?last_id=${lastId}&limit=${PAGE_SIZE}`;
-      if (discountedOnly) url += "&discounted_only=true";
-
-      // Собираем массив для кнопки подгрузки
-      let targetCategories = [];
-      if (mobileTab && tabMapping[mobileTab]) {
-        targetCategories.push(tabMapping[mobileTab]);
-      }
-      if (selectedCategories && selectedCategories.length > 0) {
-        targetCategories = [...targetCategories, ...selectedCategories];
-      }
-
-      for (const cat of targetCategories) {
-        url += `&category=${encodeURIComponent(cat)}`;
-      }
-
-      const response = await fetch(url);
+      const response = await fetch(
+        `${API_URL}/products?last_id=${lastId}&limit=${PAGE_SIZE}${discountedOnly ? "&discounted_only=true" : ""}`,
+      );
       const data = await response.json();
       if (Array.isArray(data) && data.length > 0) {
         setProducts((prev) => [...prev, ...data]);
-        setHasMore(data.length >= PAGE_SIZE); // Проверяем, есть ли товары дальше
+        setHasMore(data.length >= PAGE_SIZE);
       } else {
         setHasMore(false);
       }
@@ -382,10 +353,31 @@ export default function ProductsPage({
     }
   }
 
-  // Данные теперь приходят уже чистыми с бэкенда
+  // Фильтруем по уценке
+  const discountFiltered = useMemo(() => {
+    if (!discountedOnly) return products;
+    return products.filter((p) => (p.discount || 0) > 0);
+  }, [products, discountedOnly]);
+
+  // Финальная фильтрация по полу и категориям
   const filteredProducts = useMemo(() => {
-    return products;
-  }, [products]);
+    let result = discountFiltered;
+    if (mobileTab) {
+      result = result.filter(
+        (p) =>
+          p.categories &&
+          p.categories.some((c) => normalize(c).includes(mobileTab)),
+      );
+    }
+    if (selectedCategories.length > 0) {
+      result = result.filter(
+        (p) =>
+          p.categories &&
+          p.categories.some((cat) => selectedCategories.includes(cat)),
+      );
+    }
+    return result;
+  }, [discountFiltered, selectedCategories, mobileTab]);
 
   const handleCategoryToggle = (cat) => {
     setSearchParams((prev) => {

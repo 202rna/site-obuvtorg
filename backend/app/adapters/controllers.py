@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File, Form, Query
+from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File, Form
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
@@ -22,7 +22,7 @@ from app.domain.usecases.product.add_product_use_case import AddProductUseCase
 from app.domain.usecases.product.delete_product_use_case import DeleteProductUseCase
 from app.domain.usecases.product.get_product_by_id_use_case import GetProductByIdUseCase
 from app.domain.usecases.product.update_product_use_case import UpdateProductUseCase
-from app.domain.usecases.product.get_categories_use_case import GetCategoriesUseCase
+
 from app.domain.usecases.cart.add_to_cart_use_case import AddToCartUseCase
 from app.domain.usecases.cart.get_cart_use_case import GetCartUseCase
 from app.domain.usecases.cart.clear_cart_use_case import ClearCartUseCase
@@ -91,7 +91,6 @@ class ProductUpdateSchema(BaseModel):
 
 def create_user_router(
     get_product_by_id_use_case: GetProductByIdUseCase,
-    get_categories_use_case: GetCategoriesUseCase,
     get_one_note_use_case: GetOneNoteByIdUseCase,
     get_all_notes_use_case: GetAllNotesUseCase,
     create_note_use_case: CreateNoteUseCase,
@@ -185,22 +184,23 @@ def create_user_router(
         last_id: int | None = None,
         limit: int = 30,
         discounted_only: bool = False,
-        category: list[str] | None = Query(default=None),
     ):
-        """Получение списка продуктов с поддержкой фильтрации и пагинации."""
+        """Получение списка продуктов.
+
+        Args:
+            last_id: курсор пагинации.
+            limit: размер страницы.
+            discounted_only: если True — только товары со скидкой (уценка),
+                иначе — обычный каталог без уценённых.
+        """
         try:
             return await get_products_use_case.execute(
                 last_id=last_id,
                 limit=limit,
                 discounted_only=discounted_only,
-                category=category,
             )
-        except Exception as e:
-            print(f"Ошибка загрузки товаров: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-                detail="Ошибка загрузки товаров"
-            )
+        except Exception:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ошибка загрузки товаров")
 
     @router.get("/products/{product_id}", status_code=status.HTTP_200_OK)
     async def get_product_by_id(product_id: int):
@@ -282,13 +282,8 @@ def create_user_router(
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-        except HTTPException:
-            raise
         except Exception as e:
-            import traceback
-            print(f"Ошибка добавления товара: {e}")
-            traceback.print_exc()
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Ошибка: {str(e)}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ошибка загрузки файла")
 
     @router.patch("/products/{product_id}", status_code=status.HTTP_200_OK)
     async def update_product(
@@ -454,23 +449,6 @@ def create_user_router(
             return {"message": "Корзина успешно очищена в БД"}
         except Exception:
             raise HTTPException(status_code=500, detail="Ошибка очистки корзины")
-    
-        # 1. Сначала должен идти статический (точный) путь
-   
-        #  ИСПРАВЛЕННЫЙ ВАРИАНТ (Убрали коллизию путей)
-    
-    @router.get("/categories") # 👈 Замените "/products/categories" на "/categories"
-    async def get_categories():
-        """Получение списка всех уникальных категорий товаров."""
-        try:
-            return await get_categories_use_case.execute()
-        except Exception as e:
-            print(f"Ошибка получения категорий: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-                detail="Ошибка загрузки категорий"
-            )
-
 
     @router.delete("/products/{product_id}", status_code=status.HTTP_200_OK)
     async def delete_product(product_id: int, current_user: User = Depends(get_current_user)):

@@ -37,7 +37,7 @@ from app.domain.usecases.note.get_all_use_case import GetAllNotesUseCase
 from app.domain.usecases.note.get_one_by_id_use_case import GetOneNoteByIdUseCase
 from app.domain.usecases.product.get_product_by_id_use_case import GetProductByIdUseCase
 from app.domain.usecases.product.update_product_use_case import UpdateProductUseCase
-from app.domain.usecases.product.get_categories_use_case import GetCategoriesUseCase
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -118,12 +118,10 @@ update_product_use_case = UpdateProductUseCase(product_repo=product_repository)
 add_to_cart_use_case = AddToCartUseCase(cart_repo=cart_repository)
 get_cart_use_case = GetCartUseCase(cart_repo=cart_repository)
 clear_cart_use_case = ClearCartUseCase(cart_repo=cart_repository)
-get_categories_use_case = GetCategoriesUseCase(product_repo=product_repository)
 
 
 user_router = create_user_router(
     get_product_by_id_use_case=get_product_by_id_use_case,
-    get_categories_use_case=get_categories_use_case,
     get_all_notes_use_case=get_all_notes_use_case,
     get_one_note_use_case=get_one_note_by_id_use_case,
     create_note_use_case=create_note_use_case,
@@ -147,15 +145,12 @@ app.include_router(user_router, prefix="/api")
 sitemap_router = create_sitemap_router(product_repository=product_repository)
 app.include_router(sitemap_router)
 
-
-
-
-
 from app.adapters.controllers import create_chat_router
 chat_router = create_chat_router()
 app.include_router(chat_router, prefix="/api")
 
 
+# Создаём отдельный роутер для управления данными магазина
 shop_data_router = APIRouter(prefix="/api/shop-data", tags=["shop-data"])
 
 
@@ -212,9 +207,10 @@ app.include_router(shop_data_router)
 
 
 # ===== Captcha‑gate / Yandex SmartCaptcha =====
-request_log: dict = defaultdict(list)
-RATE_LIMIT_WINDOW = 10
-RATE_LIMIT_MAX_REQUESTS = 20
+# Простой in-memory rate-limiter для выявления подозрительного трафика
+request_log: dict = defaultdict(list)  # IP -> [timestamp, ...]
+RATE_LIMIT_WINDOW = 10  # секунд
+RATE_LIMIT_MAX_REQUESTS = 20  # макс запросов в окне
 
 
 def is_suspicious_ip(client_ip: str) -> float:

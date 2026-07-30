@@ -6,13 +6,7 @@ class GetProductsUseCase:
     def __init__(self, product_repo: ProductRepositoryPort):
         self.product_repo = product_repo
 
-    async def execute(
-        self,
-        last_id: int | None = None,
-        limit: int = 30,
-        discounted_only: bool = False,
-        category: list[str] | None = None
-    ) -> list:
+    async def execute(self, last_id: int | None = None, limit: int = 30, discounted_only: bool = False) -> list:
         if limit < 1:
             limit = 30
         if limit > 999:
@@ -22,5 +16,4 @@ class GetProductsUseCase:
             last_id=last_id,
             limit=limit,
             discounted_only=discounted_only,
-            category=category,
         )

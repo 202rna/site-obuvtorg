@@ -92,95 +92,123 @@ class PostgresProductRepository(ProductRepositoryPort):
     def __init__(self, pool: AsyncConnectionPool[Any]):
         self.pool = pool
 
-
     def _row_to_product(self, row) -> dict:
-        image_urls = row[5] if isinstance(row[5], list) else []
+        image_urls = row[5] if row[5] else []
         if not image_urls and row[4]:
             image_urls = [row[4]]
 
-        # Если строк 9 — это каталог (без full_description)
-        if len(row) == 9:
-            return {
-                "id": row[0],
-                "title": row[1],
-                "price": float(row[2]),
-                "description": row[3],
-                "image_url": row[4] or "",
-                "image_urls": image_urls,
-                "full_description": None,
-                "discount": int(row[6]) if row[6] is not None else 0,
-                "sizes": row[7] if row[7] is not None else [],
-                "categories": row[8] if row[8] is not None else [],
-            }
-        # Если колонок больше (10) — это полная карточка товара при создании/обновлении
-        else:
-            return {
-                "id": row[0],
-                "title": row[1],
-                "price": float(row[2]),
-                "description": row[3],
-                "image_url": row[4] or "",
-                "image_urls": image_urls,
-                "full_description": row[6], # full_description на месте
-                "discount": int(row[7]) if row[7] is not None else 0,
-                "sizes": row[8] if row[8] is not None else [],
-                "categories": row[9] if row[9] is not None else [],
-            }
+        return {
+            "id": row[0],
+            "title": row[1],
+            "price": float(row[2]),
+            "description": row[3],
+            "image_url": row[4] or "",
+            "image_urls": image_urls,
+            "full_description": row[6] if len(row) > 6 else None,
+            "discount": int(row[7]) if len(row) > 7 and row[7] is not None else 0,
+            "sizes": row[8] if len(row) > 8 and row[8] is not None else [],
+            "categories": row[9] if len(row) > 9 and row[9] is not None else [],
+        }
 
+    async def _replace_categories(self, conn, cur, product_id: int, categories: list[str]) -> None:
+        await cur.execute("DELETE FROM product_categories WHERE product_id = %s", (product_id,))
 
-    async def get_all(
-    self, 
-    last_id: int | None = None, 
-    limit: int = 30, 
-    discounted_only: bool = False,
-    category: list[str] | None = None
-    ) -> List[dict]:
+        normalized = [name.strip() for name in categories if str(name).strip()]
+        for category_name in normalized:
+            await cur.execute(
+                """
+                INSERT INTO categories (name)
+                VALUES (%s)
+                ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+                RETURNING id
+                """,
+                (category_name,),
+            )
+            category_row = await cur.fetchone()
+            if not category_row:
+                continue
+
+            category_id = category_row[0]
+            await cur.execute(
+                """
+                INSERT INTO product_categories (product_id, category_id)
+                VALUES (%s, %s)
+                ON CONFLICT (product_id, category_id) DO NOTHING
+                """,
+                (product_id, category_id),
+            )
+
+    async def get_all(self, last_id: int | None, limit: int, discounted_only: bool = False) -> List[dict]:
         async with self.pool.connection() as conn:
             async with conn.cursor() as cur:
+                if last_id is None:
+                    if discounted_only:
+                        await cur.execute(
+                            """
+                            SELECT p.id, p.title, p.price, p.description, p.image_url, p.image_urls,
+                                   p.full_description, p.discount, p.sizes,
+                                   COALESCE(array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL), '{}') AS categories
+                            FROM products p
+                            LEFT JOIN product_categories pc ON pc.product_id = p.id
+                            LEFT JOIN categories c ON c.id = pc.category_id
+                            WHERE p.discount > 0
+                            GROUP BY p.id
+                            ORDER BY p.id DESC
+                            LIMIT %s
+                            """,
+                            (limit,)
+                        )
+                    else:
+                        await cur.execute(
+                            """
+                            SELECT p.id, p.title, p.price, p.description, p.image_url, p.image_urls,
+                                   p.full_description, p.discount, p.sizes,
+                                   COALESCE(array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL), '{}') AS categories
+                            FROM products p
+                            LEFT JOIN product_categories pc ON pc.product_id = p.id
+                            LEFT JOIN categories c ON c.id = pc.category_id
+                            GROUP BY p.id
+                            ORDER BY p.id DESC
+                            LIMIT %s
+                            """,
+                            (limit,)
+                        )
+                else:
+                    if discounted_only:
+                        await cur.execute(
+                            """
+                            SELECT p.id, p.title, p.price, p.description, p.image_url, p.image_urls,
+                                   p.full_description, p.discount, p.sizes,
+                                   COALESCE(array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL), '{}') AS categories
+                            FROM products p
+                            LEFT JOIN product_categories pc ON pc.product_id = p.id
+                            LEFT JOIN categories c ON c.id = pc.category_id
+                            WHERE p.id < %s AND p.discount > 0
+                            GROUP BY p.id
+                            ORDER BY p.id DESC
+                            LIMIT %s
+                            """,
+                            (last_id, limit)
+                        )
+                    else:
+                        await cur.execute(
+                            """
+                            SELECT p.id, p.title, p.price, p.description, p.image_url, p.image_urls,
+                                   p.full_description, p.discount, p.sizes,
+                                   COALESCE(array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL), '{}') AS categories
+                            FROM products p
+                            LEFT JOIN product_categories pc ON pc.product_id = p.id
+                            LEFT JOIN categories c ON c.id = pc.category_id
+                            WHERE p.id < %s
+                            GROUP BY p.id
+                            ORDER BY p.id DESC
+                            LIMIT %s
+                            """,
+                            (last_id, limit)
+                        )
                 
-                where_clauses = []
-                query_args = []
-                
-                if last_id is not None:
-                    where_clauses.append("p.id < %s")
-                    query_args.append(last_id)
-                    
-                if discounted_only:
-                    where_clauses.append("p.discount > 0")
-                    
-                where_str = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
-                
-                query = f"""
-                    SELECT p.id, p.title, p.price, p.description, p.image_url, p.image_urls,
-                        p.discount, p.sizes,
-                        COALESCE(array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL), '{{}}') AS categories
-                    FROM products p
-                    LEFT JOIN product_categories pc ON pc.product_id = p.id
-                    LEFT JOIN categories c ON c.id = pc.category_id
-                    {where_str}
-                    GROUP BY p.id
-                """
-                
-                if category and len(category) > 0:
-                    having_conditions = []
-                    for cat in category:
-                        having_conditions.append("""
-                            EXISTS (
-                                SELECT 1 FROM unnest(array_agg(DISTINCT c.name)) AS cat_name
-                                WHERE cat_name ILIKE %s
-                            )
-                        """)
-                        query_args.append(f"%{cat}%")
-                    query += " HAVING " + " AND ".join(having_conditions)
-                    
-                query += " ORDER BY p.id DESC LIMIT %s"
-                query_args.append(limit)
-                
-                await cur.execute(query, query_args)
                 rows = await cur.fetchall()
-                
                 return [self._row_to_product(row) for row in rows]
-
 
     async def save(
         self,
@@ -319,7 +347,6 @@ class PostgresProductRepository(ProductRepositoryPort):
                     return False
 
                 if categories is not Missing:
-                    assert isinstance(categories, list)
                     await self._replace_categories(conn, cur, product_id, categories)
 
                 return True
@@ -345,31 +372,6 @@ class PostgresProductRepository(ProductRepositoryPort):
                     return None
                 return self._row_to_product(row)
 
-    async def _replace_categories(self, conn, cur, product_id: int, categories: list[str]):
-        """Удаляет старые связи с категориями и создаёт новые.
-        Категории создаются в таблице categories, если их ещё нет."""
-        # Удаляем старые связи
-        await cur.execute("DELETE FROM product_categories WHERE product_id = %s", (product_id,))
-
-        # Для каждой категории: создаём, если нет, и создаём связь
-        for category_name in categories:
-            if not category_name.strip():
-                continue
-            # Вставляем категорию, если её нет
-            await cur.execute(
-                "INSERT INTO categories (name) VALUES (%s) ON CONFLICT (name) DO NOTHING",
-                (category_name.strip(),)
-            )
-            # Получаем id категории
-            await cur.execute("SELECT id FROM categories WHERE name = %s", (category_name.strip(),))
-            cat_row = await cur.fetchone()
-            if cat_row:
-                # Создаём связь
-                await cur.execute(
-                    "INSERT INTO product_categories (product_id, category_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
-                    (product_id, cat_row[0])
-                )
-
     async def get_all_ids(self) -> list[int]:
         """Получить список ID всех товаров (для sitemap)."""
         async with self.pool.connection() as conn:
@@ -377,16 +379,6 @@ class PostgresProductRepository(ProductRepositoryPort):
                 await cur.execute("SELECT id FROM products ORDER BY id ASC")
                 rows = await cur.fetchall()
                 return [row[0] for row in rows]
-            
-    async def get_all_categories(self) -> list[str]:
-        async with self.pool.connection() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(
-                    "SELECT DISTINCT name FROM categories WHERE name IS NOT NULL ORDER BY name"
-                )
-                rows = await cur.fetchall()
-                return [row[0] for row in rows]
-
             
 class PostgresCartRepository(CartRepositoryPort):
     """Реализует добавление товара в корзину пользователя.

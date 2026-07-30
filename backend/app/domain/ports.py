@@ -58,17 +58,9 @@ class MissingType:
 class ProductRepositoryPort(ABC):
     """Интерфейс для управления товарами"""
     @abstractmethod
-    @abstractmethod
-    async def get_all(
-        self, 
-        last_id: int | None = None,
-        limit: int = 30,
-        discounted_only: bool = False,
-        category: list[str] | None = None
-    ) -> list:
-        """Получение товаров по курсору."""
+    async def get_all(self, last_id: int | None, limit: int, discounted_only: bool = False) -> list:
+        """Получение товаров по курсору. discounted_only=True — только с discount > 0."""
         pass
-
 
     @abstractmethod
     async def save(
@@ -115,12 +107,7 @@ class ProductRepositoryPort(ABC):
         """Получить список ID всех товаров (для sitemap)."""
         pass
 
-    @abstractmethod
-    async def get_all_categories(self) -> list[str]:
-        """Получение списка всех категорий всех товаров"""
-        pass
-        
-        
+
 class CartRepositoryPort(ABC):
     """Интерфейс управления корзиной в базе данных."""
     @abstractmethod
