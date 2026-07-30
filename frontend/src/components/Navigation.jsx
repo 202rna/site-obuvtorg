@@ -25,7 +25,7 @@ export default function Navigation({
   })();
 
   const navLinks = [
-    { id: "catalog", label: "Каталог", path: "/" },
+    { id: "catalog", label: "Каталог", path: "/", isRed: true },
     // Убрана ссылка на "Скидки"
     { id: "news", label: "Новости", path: "/notes", subLabel: "магазина" },
     {
@@ -166,7 +166,7 @@ export default function Navigation({
                       isHovered || isActive
                         ? "#000000"
                         : link.isRed
-                          ? "#dc2626"
+                          ? "#090087"
                           : link.isGreen
                             ? "#34d226" // Зеленый цвет (можно заменить на свой hex-код)
                             : "#4b5563",
