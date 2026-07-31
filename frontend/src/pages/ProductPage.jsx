@@ -236,6 +236,7 @@ export default function ProductPage({
   cart = [],
   userRole = "user",
 }) {
+  const [isImageOpen, setIsImageOpen] = useState(false);
   const { productId } = useParams();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -653,12 +654,62 @@ export default function ProductPage({
         <img
           src={finalImageUrl}
           alt={title || "Товар"}
-          style={styles.image}
+          style={{
+            ...styles.image,
+            cursor: "zoom-in",
+          }}
+          onClick={() => setIsImageOpen(true)}
           onError={(e) => {
             e.target.onerror = null;
             e.target.src = "/placeholder.png";
           }}
         />
+        {isImageOpen && (
+          <div
+            onClick={() => setIsImageOpen(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.9)",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              zIndex: 9999,
+              cursor: "zoom-out",
+              padding: "20px",
+            }}
+          >
+            <img
+              src={finalImageUrl}
+              alt={title}
+              style={{
+                maxWidth: "100%",
+                maxHeight: "100%",
+                objectFit: "contain",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            />
+
+            <button
+              onClick={() => setIsImageOpen(false)}
+              style={{
+                position: "absolute",
+                top: 20,
+                right: 20,
+                width: 42,
+                height: 42,
+                border: "none",
+                borderRadius: "50%",
+                background: "rgba(255,255,255,0.15)",
+                color: "#fff",
+                fontSize: "24px",
+                cursor: "pointer",
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
       </div>
 
       <h1 style={styles.title}>{title || "Без названия"}</h1>
