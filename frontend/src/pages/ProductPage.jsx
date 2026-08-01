@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { marked } from "marked";
 import { getFinalPrice, formatPrice } from "../utils/price";
+import { SEO } from "../SEO";
 
 const styles = {
   container: {
@@ -569,6 +570,18 @@ export default function ProductPage({
 
   return (
     <div style={styles.container}>
+      <SEO
+        title={title || "Загрузка товара"}
+        description={`Купить ${title || ""} за ${
+          price
+            ? formatPrice(price)
+                .replace(/[\u00a0\s]+/g, " ")
+                .trim()
+            : ""
+        } ₽ c примеркой в Ярославле! В нашем магазине обуви «Обувьторг» на ул. Вспольинское Поле.`}
+        isProduct={true}
+      />
+
       <div
         style={styles.backBtn}
         onClick={() => navigate(-1)}
