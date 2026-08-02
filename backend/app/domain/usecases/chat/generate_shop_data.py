@@ -4,7 +4,6 @@
 """
 import json
 import os
-from datetime import datetime, timezone
 from app.domain.ports import ProductRepositoryPort, NoteRepositoryPort
 import aiofiles
 
@@ -15,11 +14,7 @@ async def generate_shop_data(
     product_repo: ProductRepositoryPort,
     note_repo: NoteRepositoryPort,
 ) -> dict:
-    """Генерирует актуальный shop_data.json со всеми товарами и заметками.
-    
-    Returns:
-        dict: Сгенерированные данные.
-    """
+    """Генерирует актуальный shop_data.json со всеми товарами и заметками."""
     # Получаем все товары
     all_products = await product_repo.get_all(last_id=None, limit=9999)
     
@@ -58,9 +53,9 @@ async def generate_shop_data(
         }
         notes_formatted.append(note_entry)
     
-    # Собираем всю информацию о магазине
+    # Собираем всю информацию о магазине. Ключ времени зафиксирован для сохранения кэша.
     shop_data = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": "STATIC_CACHE_KEY",
         "shop_name": "ООО ФИРМА ОБУВЬТОРГ",
         "shop_address": "150049, Ярославская область, г. Ярославль, ул. Вспольинское Поле, д. 18",
         "shop_phone": "+7 (4852) 21-47-55",
@@ -79,26 +74,8 @@ async def generate_shop_data(
     return shop_data
 
 
-# async def load_shop_data() -> dict | None:
-#     """Загружает shop_data.json из файла.
-    
-#     Returns:
-#         dict | None: Данные магазина или None, если файла нет.
-#     """
-#     if not os.path.exists(SHOP_DATA_PATH):
-#         return None
-#     try:
-#         with open(SHOP_DATA_PATH, "r", encoding="utf-8") as f:
-#             return json.load(f)
-#     except (json.JSONDecodeError, IOError):
-#         return None
-    
 async def load_shop_data() -> dict | None:
-    """Загружает shop_data.json из файла асинхронно.
-    
-    Returns:
-        dict | None: Данные магазина или None, если файла нет.
-    """
+    """Загружает shop_data.json из файла асинхронно."""
     if not os.path.exists(SHOP_DATA_PATH):
         return None
     try:

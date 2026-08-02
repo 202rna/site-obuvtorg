@@ -64,26 +64,9 @@ RECOMMEND_PATTERN = re.compile(r'\[RECOMMEND:(\d+)\]')
 async def get_ai_answer(
     messages: list[dict],
     api_key: str,
-    model: str = "mistral-nemo",
+    model: str = "deepseek-v4-flash",
     base_url: str = "https://api.aitunnel.ru/v1",
 ) -> dict:
-    """Получает ответ от AI (AI Tunnel) на основе данных магазина.
-    
-    Возвращает словарь:
-    {
-        "content": str,        # ответ AI с маркерами [RECOMMEND:ID]
-        "recommended_product_ids": list[int]  # ID рекомендованных товаров
-    }
-    
-    Args:
-        messages: Список сообщений диалога [{"role": "user"/"assistant", "content": "..."}].
-        api_key: Ключ API AI Tunnel.
-        model: Модель.
-        base_url: Базовый URL AI Tunnel сервера.
-    
-    Returns:
-        dict: {"content": str, "recommended_product_ids": list[int]}.
-    """
     shop_data = await load_shop_data()
     
     if not shop_data:
@@ -92,21 +75,41 @@ async def get_ai_answer(
             "recommended_product_ids": [],
         }
     
-    # Создаем контекст с данными о магазине
     context_text = json.dumps(shop_data, ensure_ascii=False, indent=2)
     
-    # Формируем сообщения для AI
+    # 1. Точка фиксации кэша: Системная инструкция и товары идут первыми без изменений
+    full_system_content = f"{SYSTEM_PROMPT}\n\n### АКТУАЛЬНЫЕ ДАННЫЕ МАГАЗИНА (JSON) ###\n{context_text}"
+    
     ai_messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "system", "content": f"Актуальные данные магазина (JSON):\n\n{context_text}"},
+        {"role": "system", "content": full_system_content}
     ]
     
-    # Добавляем историю сообщений (передана с клиента)
-    for msg in messages:
+    # 2. Берем последние 4 сообщения для памяти (2 вопроса юзера + 2 ответа бота)
+    # Этого более чем достаточно для удержания нити разговора
+    recent_history = messages[:-1] if len(messages) > 1 else []
+    recent_history = recent_history[-4:]
+    
+    # Форматируем историю в компактный понятный для ИИ вид
+    history_lines = []
+    for msg in recent_history:
+        speaker = "Покупатель" if msg["role"] == "user" else "Консультант"
+        history_lines.append(f"{speaker}: {msg['content']}")
+    
+    history_context = "\n".join(history_lines)
+    
+    # 3. Передаем историю как предварительный контекст беседы
+    if history_context:
         ai_messages.append({
-            "role": msg["role"],
-            "content": msg["content"],
+            "role": "user", 
+            "content": f"Контекст нашей текущей беседы для справки:\n{history_context}\n\nПожалуйста, учти это при ответе на мой следующий вопрос."
         })
+    
+    # 4. Передаем самый свежий, текущий вопрос пользователя в самом конце
+    last_user_message = messages[-1]
+    ai_messages.append({
+        "role": "user",
+        "content": f"Мой новый вопрос: {last_user_message['content']}"
+    })
     
     client = AsyncOpenAI(api_key=api_key, base_url=base_url)
     response = await client.chat.completions.create(
@@ -116,13 +119,8 @@ async def get_ai_answer(
         max_tokens=2000,
     )
     
-    raw_text = response.choices[0].message.content or ""
-    
-    # 1. Находим все ID товаров
+    raw_text = response.choices.message.content or ""
     product_ids = [int(m) for m in RECOMMEND_PATTERN.findall(raw_text)]
-    
-    # 2. ВАЖНОЕ ИЗМЕНЕНИЕ: Не удаляем маркеры из текста!
-    # Возвращаем текст как есть, чтобы фронтенд сам заменил [RECOMMEND:ID] на <img>
     cleaned_text = raw_text.strip()
     
     return {
