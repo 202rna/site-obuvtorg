@@ -31,9 +31,10 @@ SYSTEM_PROMPT = """Ты — дружелюбный и полезный конс�
 - Будь вежливым и приветливым
 - Отвечай на русском языке
 - Если пользователь спрашивает о конкретном товаре, дай краткую информацию
+- В конце всегда рекомендуй позвонить в магазин по номеру 📞 +7 (4852) 21-47-55.
 
 ### ФОРМАТ РЕКОМЕНДАЦИЙ ТОВАРОВ И ОТВЕТА НА ФОТО ###
-Когда ты рекомендуешь товары или пользователь просит фото, ты ДОЛЖЕН для каждого товара 
+Всегда когда ты рекомендуешь товары или пользователь просит фото, ты ДОЛЖЕН для каждого товара 
 вставить в текст маркер [RECOMMEND:ID], где ID — ID товара из данных магазина.
 
 - НИКОГДА не пиши Markdown-ссылки на картинки (не используй ![]()).
@@ -47,12 +48,12 @@ SYSTEM_PROMPT = """Ты — дружелюбный и полезный конс�
 [RECOMMEND:12]
 [RECOMMEND:7]
 
-Все эти модели отлично подходят для ваших целей."
+Все эти модели отлично подходят для ваших целей. Всегда можете узнать о товарах подробнее по номеру 📞 +7 (4852) 21-47-55. Вам с радостью все подробно расскажут!"
 
 ВАЖНО:
 - Маркер [RECOMMEND:ID] ставь прямо в текст.
 - Можно рекомендовать до 3-4 товаров за один ответ.
-- Если в данных нет информации о товаре, скажи, что информации нет, и пригласи в магазин.
+- Если в данных нет информации о товаре, скажи, что информации нет, и пригласи в магазин и позвонить по номеру 📞 +7 (4852) 21-47-55.
 
 Ниже представлены актуальные данные о магазине, товарах и новостях.
 """
@@ -65,7 +66,7 @@ async def get_ai_answer(
     messages: list[dict],
     api_key: str,
     model: str = "deepseek-v4-flash",
-    base_url: str = "https://api.aitunnel.ru/v1",
+    base_url: str = "https://aitunnel.ru",
 ) -> dict:
     shop_data = await load_shop_data()
     
@@ -77,49 +78,57 @@ async def get_ai_answer(
     
     context_text = json.dumps(shop_data, ensure_ascii=False, indent=2)
     
-    # 1. Точка фиксации кэша: Системная инструкция и товары идут первыми без изменений
+    # 1. Железобетонный блок для кэша. Он всегда первый на индексе 0 и не меняется.
     full_system_content = f"{SYSTEM_PROMPT}\n\n### АКТУАЛЬНЫЕ ДАННЫЕ МАГАЗИНА (JSON) ###\n{context_text}"
     
     ai_messages = [
         {"role": "system", "content": full_system_content}
     ]
     
-    # 2. Берем последние 4 сообщения для памяти (2 вопроса юзера + 2 ответа бота)
-    # Этого более чем достаточно для удержания нити разговора
+    if not messages:
+        return {"content": "Привет! Чем я могу помочь?", "recommended_product_ids": []}
+
+    # 2. Безопасно собираем историю последних 4 реплик
     recent_history = messages[:-1] if len(messages) > 1 else []
     recent_history = recent_history[-4:]
     
-    # Форматируем историю в компактный понятный для ИИ вид
     history_lines = []
     for msg in recent_history:
-        speaker = "Покупатель" if msg["role"] == "user" else "Консультант"
-        history_lines.append(f"{speaker}: {msg['content']}")
-    
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+        speaker = "Покупатель" if role == "user" else "Консультант"
+        if content:
+            history_lines.append(f"{speaker}: {content}")
+            
     history_context = "\n".join(history_lines)
     
-    # 3. Передаем историю как предварительный контекст беседы
+    # 3. Передаем историю диалога как справочный блок строго после кэша
     if history_context:
         ai_messages.append({
             "role": "user", 
-            "content": f"Контекст нашей текущей беседы для справки:\n{history_context}\n\nПожалуйста, учти это при ответе на мой следующий вопрос."
+            "content": f"Контекст нашей беседы для справки:\n{history_context}"
         })
     
-    # 4. Передаем самый свежий, текущий вопрос пользователя в самом конце
+    # 4. Передаем текущий вопрос пользователя в самом конце
     last_user_message = messages[-1]
+    current_question = last_user_message.get("content", "").strip()
+    
     ai_messages.append({
         "role": "user",
-        "content": f"Мой новый вопрос: {last_user_message['content']}"
+        "content": f"Новый вопрос покупателя: {current_question}"
     })
     
     client = AsyncOpenAI(api_key=api_key, base_url=base_url)
     response = await client.chat.completions.create(
         model=model,
-        messages=ai_messages,
+        messages=ai_messages,  # type: ignore
         temperature=0.7,
         max_tokens=2000,
     )
     
-    raw_text = response.choices.message.content or ""
+    raw_text = response.choices[0].message.content or ""
+    
+    # Находим все ID товаров
     product_ids = [int(m) for m in RECOMMEND_PATTERN.findall(raw_text)]
     cleaned_text = raw_text.strip()
     
